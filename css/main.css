@@ -30,12 +30,12 @@ nav {
     z-index: 999;
 }
 .player .left{
-    z-index: -1;
-    float:left;
+    position: absolute;
+    left: 0;
 }
-.right{
-    z-index: -1;
-    float:right;
+.player .right{
+    position: absolute;
+    right: 0;
 }
 .center{
     z-index: 10;
@@ -47,20 +47,82 @@ nav {
 .navbar-fixed {
     height: 50px;
 }
-
-
 @media only screen and (min-width: 601px) {
     .navbar-fixed {
         height: 58px;
     }
 }
 
-i.medium {
-    font-size: 4rem !important;
+#volume-slider {
+    height: 160px;
 }
-i.large{
-    font-size: 6rem !important;
+#volume-container {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    padding: 20px 20px 70px 20px;
+    z-index: 999;
+    display: none;
 }
+.noUi-vertical .noUi-handle {
+    width: 0px;
+    height: 0px;
+    left: 0px;
+    top: 0px;
+}
+
+.noUi-handle:after, .noUi-handle:before {
+    display: none;
+    height: 0;
+    width: 0;
+}
+
+@media only screen and (max-width: 600px) {
+    #volume-container {
+        padding-left: 0.8rem;
+        padding-right: 0.8rem;
+    }
+    i.small{
+        font-size: 1rem !important;
+    }
+    i.medium {
+        font-size: 2rem !important;
+    }
+    i.large{
+        font-size: 3rem !important;
+    }
+}
+@media only screen and (min-width: 600px) and (max-width: 992px) {
+    #volume-container {
+        padding-left: 1.1rem;
+        padding-right: 1.1rem;
+    }
+    i.small{
+        font-size: 1.5rem !important;
+    }
+    i.medium {
+        font-size: 3rem !important;
+    }
+    i.large{
+        font-size: 5rem !important;
+    }
+}
+@media only screen and (min-width: 993px) {
+    #volume-container {
+        padding-left: 1.4rem;
+        padding-right: 1.4rem;
+    }
+    i.small{
+        font-size: 2rem !important;
+    }
+    i.medium {
+        font-size: 4rem !important;
+    }
+    i.large{
+        font-size: 6rem !important;
+    }
+}
+
 .fixed-footer i.material-icons {
     height: auto;
     line-height: 70px;
@@ -91,43 +153,17 @@ i.large{
     vertical-align: middle;
 }
 
-#volume-slider {
-    height: 160px;
-}
-#volume-container {
-    position: fixed;
-    bottom: 0;
-    right: 0;
-    padding: 20px 20px 70px 20px;
-    z-index: 999;
-    display: none;
-}
-.noUi-vertical .noUi-handle {
-    width: 0px;
-    height: 0px;
-    left: 0px;
-    top: 0px;
-}
-
-.noUi-handle:after, .noUi-handle:before {
-    display: none;
-    height: 0;
-    width: 0;
-}
-
 #loader {
     position: fixed;
     top: 50%;
     left: 48%;
 }
 
-
 .playlist-item {
     display: block;
     transition: .25s;
     color: #26a69a;
-    opacity: 0;
 }
 .playlist-item:not(.active):hover {
-    background-color: #ddd;
+    background-color: #000000;
 }

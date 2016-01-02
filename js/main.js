@@ -8,32 +8,10 @@ function init(){
         closeOnClick: true // Closes side-nav on <a> clicks, useful for Angular/Meteor
     });
 
-    var slider = document.getElementById('volume-slider');
-    noUiSlider.create(slider, {
-        start: 80, // Handle start position
-        connect: 'lower', // Display a colored bar between the handles
-        direction: 'rtl', // Put '0' at the bottom of the slider
-        orientation: 'vertical',
-        behaviour: 'snap',
-        //tooltips: wNumb({decimals: 0}),
-        range: {
-            'min': 0,
-            'max': 100
-        },
-    });
-    var volume_button = document.getElementById('volume-button');
-    volume_button.addEventListener("mouseover", show_volume, false);
-    volume_button.addEventListener("touchstart", show_volume, false);
-    function show_volume(){
-        $('#volume-container').show();
-    }
-    var volume_container = document.getElementById('volume-container');
-    volume_container.addEventListener("mouseleave", hide_volume, false);
-    volume_container.addEventListener("onfocusout", hide_volume, false);
-    function hide_volume(){
-        $('#volume-container').hide();
-    }
+    init_volume();
     $('#play-button').on('tap click', play_toggle);
+    $('#prev-button').on('tap click', prev);
+    $('#next-button').on('tap click', next);
     $('#loader').hide();
     get_events();
     init_audio();
@@ -115,6 +93,39 @@ function prev(){
     var curr = document.querySelector('.active')
     var prev = curr.previousElementSibling;
     prev.click();
+}
+
+function init_volume(){
+    var slider = document.getElementById('volume-slider');
+    noUiSlider.create(slider, {
+        start: 80, // Handle start position
+        connect: 'lower', // Display a colored bar between the handles
+        direction: 'rtl', // Put '0' at the bottom of the slider
+        orientation: 'vertical',
+        behaviour: 'snap',
+        //tooltips: wNumb({decimals: 0}),
+        range: {
+            'min': 0,
+            'max': 100
+        },
+    });
+    var volume_button = document.getElementById('volume-button');
+    volume_button.addEventListener("mouseover", show_volume, false);
+    volume_button.addEventListener("touchstart", show_volume, false);
+    var timer;
+    function show_volume(){
+        window.clearTimeout(timer);
+        $('#volume-container').fadeIn('fast');
+        timer = setTimeout(hide_volume, 3 * 1000);
+    }
+    var volume_container = document.getElementById('volume-container');
+    volume_container.addEventListener("mouseleave", hide_volume, false);
+    volume_container.addEventListener("onfocusout", hide_volume, false);
+    volume_container.addEventListener("mouseover", show_volume, false);
+    volume_container.addEventListener("touchstart", show_volume, false);
+    function hide_volume(){
+        $('#volume-container').fadeOut('slow');
+    }
 }
 
 function get_events(){
@@ -236,7 +247,7 @@ function load_tracks(){
     }
     $('.playlist-item').on('tap click', play_item);
     $('.playlist-item').first().trigger('click');
-    Materialize.showStaggeredList('#playlist')
+    init_dismissables();
 }
 
 function create_track_list(){
@@ -275,4 +286,62 @@ function keydown(e){
             play_toggle();
             break;
     }
+}
+
+function init_dismissables(){
+    var swipeLeft = false;
+    var swipeRight = false;
+    $('.dismissable').each(function() {
+        $(this).hammer({
+            prevent_default: false
+        }).bind('pan', function(e) {
+            if (e.gesture.pointerType === "touch") {
+                var $this = $(this);
+                var direction = e.gesture.direction;
+                var x = e.gesture.deltaX;
+                var velocityX = e.gesture.velocityX;
+
+                $this.velocity({ translateX: x
+                    }, {duration: 50, queue: false, easing: 'easeOutQuad'});
+                // Swipe Left
+                if (direction === 4 && (x > ($this.innerWidth() / 2) || velocityX < -0.75)) {
+                    swipeLeft = true;
+                }
+                // Swipe Right
+                if (direction === 2 && (x < (-1 * $this.innerWidth() / 2) || velocityX > 0.75)) {
+                    swipeRight = true;
+                }
+            }
+      }).bind('panend', function(e) {
+        // Reset if collection is moved back into original position
+        if (Math.abs(e.gesture.deltaX) < ($(this).innerWidth() / 2)) {
+            swipeRight = false;
+            swipeLeft = false;
+        }
+        if (e.gesture.pointerType === "touch") {
+            var $this = $(this);
+            if (swipeLeft || swipeRight) {
+                var fullWidth;
+                if (swipeLeft) { fullWidth = $this.innerWidth(); }
+                else { fullWidth = -1 * $this.innerWidth(); }
+                $this.velocity({ translateX: fullWidth,
+                    }, {duration: 100, queue: false, easing: 'easeOutQuad', complete:
+                    function() {
+                        $this.css('border', 'none');
+                        $this.velocity({ height: 0, padding: 0,
+                            }, {duration: 200, queue: false, easing: 'easeOutQuad', complete:
+                            function() { $this.remove(); }
+                        });
+                    }
+                });
+            }
+            else {
+                $this.velocity({ translateX: 0,
+                }, {duration: 100, queue: false, easing: 'easeOutQuad'});
+            }
+            swipeLeft = false;
+            swipeRight = false;
+        }
+    });
+    });
 }
