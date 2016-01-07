@@ -1,23 +1,29 @@
 <header>
-  <nav>
-      <div class="nav-wrapper">
-          <a href="#" data-activates="settings" class="button-collapse show-on-large"><i class="mdi-navigation-menu"></i></a>
-          <a href="#!" class="brand-logo center">BandWagon</a>
-          <a href="#" data-activates="right-side" class="dropdown-button right hide-on-med-and-up"><i class="material-icons">more_vert</i></a>
-          <ul class="right hide-on-small-and-down">
-              <li><a href="#!">About</a></li>
-              <li><a href="#!">Settings</a></li>
-          </ul>
-          <ul class="dropdown-content" id="right-side">
-              <li><a href="#!">About</a></li>
-              <li><a href="#!">Settings</a></li>
-          </ul>
-          <div class="side-nav" id="settings">
-              <ul>
-                  <li><a href="#!">About</a></li>
-                  <li><a href="#!">Settings</a></li>
-              </ul>
-          </div>
-      </div>
-  </nav>
+<nav>
+    <div class="nav-wrapper">
+        <a data-activates="settings" class="button-collapse hide-on-med-and-up waves-effect waves-light btn">
+            <i class="mdi-navigation-menu"></i>
+        </a>
+        <a data-activates="settings" class="button-collapse left hide-on-small-and-down show-on-large waves-effect waves-light btn">
+            <i class="mdi-navigation-menu"><span >Settings</span></i>
+        </a>
+        <div class="side-nav" id="settings">
+            {% include 'includes/settings.html' %}
+        </div>
+
+        <a href="#!" class="brand-logo center">BandWagon</a>
+
+        <!--
+        <a data-activates="right-dropdown" class="dropdown-button right hide-on-med-and-up waves-effect waves-light btn">
+            <i class="material-icons">more_vert</i>
+        </a>
+        <ul class="right hide-on-small-and-down">
+            <li><a class="waves-effect waves-light btn">About</a></li>
+        </ul>
+        <ul class="dropdown-content" id="right-dropdown">
+            <li><a href="#!">About</a></li>
+        </ul>
+        -->
+    </div>
+</nav>
 </header>

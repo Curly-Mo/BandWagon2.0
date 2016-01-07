@@ -11,6 +11,7 @@ function init(){
     $('#play-button').on('tap click', play_toggle);
     $('#prev-button').on('tap click', prev);
     $('#next-button').on('tap click', next);
+    init_settings();
     get_events();
     init_volume();
     init_audio();
@@ -27,6 +28,11 @@ var events = {};
 var artists = {};
 var tracks = {};
 var promises = [];
+var settings = {
+    'startdate': moment().local().format('YYYY-MM-DD'),
+    'enddate': moment().local().add(1, 'months').format('YYYY-MM-DD'),
+    'distance': '20mi',
+}
 
 function init_audio(){
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -68,7 +74,11 @@ function pause(){
 function play_toggle(){
     var e = $('#play');
     if(e.html() == 'play_arrow'){
-        audio_source.mediaElement.play();
+        if(!document.querySelector('.playlist-item.active')){
+            $('.playlist-item').first().trigger('click');
+        }else{
+            audio_source.mediaElement.play();
+        }
         e.fadeOut('fast', function() {
             e.html('pause');
             e.fadeIn('fast');
@@ -137,6 +147,7 @@ function init_progress(){
         start: 0,
         connect: 'lower',
         behaviour: 'snap',
+        animate: true,
         range: {
             'min': 0,
             'max': 100
@@ -175,20 +186,24 @@ function init_progress(){
 
 function get_events(){
     var base_url = 'http://api.seatgeek.com/2/events?';
+    var daterange = $('#daterange').val().split(' to ');
     var params = {
-        geoip: true,
         aid: 11799,
         client_id: 'NDA0ODEwNnwxNDUxNTIwNTY1',
-        range: '20mi',
-        per_page: 1000,
+        geoip: true,
+        range: settings.distance || "20mi",
         'taxonomies.name': 'concert',
+        'datetime_utc.gte': settings.startdate || moment().local().format(),
+        'datetime_utc.lte': settings.enddate || moment().local().add(1, 'months').format(),
+        per_page: 1000,
     }
     var query_string = $.param(params);
-    console.log(query_string);
     var url = base_url + query_string;
     $.ajax({
         url: url,
-        context: document.body,
+        tryCount : 0,
+        retryLimit : 1,
+        timeout: 20000,
         beforeSend: function() {
             $('#loader').show();
             $('#loading-message').text('Finding concerts...').fadeIn(200);;
@@ -199,7 +214,20 @@ function get_events(){
         success: function(response){
             $('#loader').hide();
             parse_events(response.events);
-        }
+        },
+        error: function (response, status, error) {
+            this.tryCount++;
+            if(this.tryCount <= this.retryLimit){
+                $('#loading-message').fadeOut(500, function() {
+                    $(this).text('Retrying...').fadeIn(500);
+                });
+                $.ajax(this);
+            }else{
+                $('#loader').html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
+                    +   "We dun goofed!<br>Sorry, my servers are down right now. Please try again later."
+                );
+            }
+        },
     });
 }
 
@@ -253,7 +281,7 @@ function soundcloud_url(artist){
     var params = {
         'client_id': 'f1686e09dcc2a404eccb6f8473803687',
         'order': 'hotness',
-        'limit': 5,
+        'limit': 3,
         'q': artist,
         'username': artist,
     }
@@ -302,7 +330,7 @@ function load_tracks(){
         );
     }
     $('.playlist-item').on('tap click', play_item);
-    if(!isMobile()){
+    if(!isMobile() && audio.paused){
         $('.playlist-item').first().trigger('click');
     }
     init_dismissables();
@@ -356,6 +384,11 @@ function keydown(e){
             play_toggle();
             break;
     }
+}
+
+function refresh_playlist() {
+    $('#playlist').empty();
+    get_events();
 }
 
 function init_dismissables(){
@@ -421,4 +454,67 @@ function isMobile(){
         return true;
     }
     return false;
+}
+
+function init_settings(){
+    /*$('.datepicker').pickadate({
+        selectMonths: true,
+        selectYears: 2,
+        today: 'Today',
+        clear: false,
+        close: 'cancel',
+        container: 'main',
+        closeOnSelect: true,
+    });*/
+    var datepicker = $('#daterange').dateRangePicker({
+        separator : ' to ',
+        format: 'YYYY-MM-DD',
+        autoClose: true,
+        container:'main',
+        showTopbar: false,
+        startDate: moment().local().format(),
+        setValue: function(s){
+            if(!$(this).is(':disabled') && s != $(this).val())
+            {
+                $(this).val(s);
+            }
+        },
+    });
+    $('#daterange').data('dateRangePicker').setDateRange(moment().local().format(), moment().local().add(1, 'months').format());
+
+    var slider = document.querySelector('#distance');
+    noUiSlider.create(slider, {
+        start: 20,
+        connect: 'lower',
+        behaviour: 'snap',
+        step: 1,
+        animate: true,
+        tooltips: true,
+        range: {
+            'min': 1,
+            'max': 100
+        },
+        format: {
+            to: function ( value ) {
+                return value + 'mi';
+            },
+            from: function ( value ) {
+                return value;
+            }
+        },
+    });
+    $('.drag-target').on('click touchstart', update_settings);
+}
+
+function update_settings(){
+    var daterange = $('#daterange').val().split(' to ');
+    var new_settings = {
+        'startdate': daterange[0],
+        'enddate': daterange[1],
+        'distance': document.querySelector('#distance').noUiSlider.get(),
+    }
+    if(JSON.stringify(window.settings) !== JSON.stringify(new_settings)){
+        window.settings = new_settings;
+        refresh_playlist();
+    }
 }
