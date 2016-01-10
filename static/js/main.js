@@ -759,6 +759,20 @@ function echonest_artist_info(artist_id){
                 body.append($('<label>').text('Hometown:'))
                     .append($('<p>').text(artist_profile.artist_location.location));
             }
+            if(typeof artist_profile.urls !== "undefined"){
+                if(Object.keys(artist_profile.urls).length > 0){
+                    var p = $('<p>');
+                    body.append($('<label>').text('Links:')).append(p);
+                    for(var key in artist_profile.urls) {
+                        if(key == 'mb_url'){continue;}
+                        if(key == 'official_url'){
+                            p.prepend($('<div>').append($('<a>').attr({'href': artist_profile.urls[key], 'target': '_blank'}).text(key.replace('_url',''))));
+                        }else{
+                            p.append($('<div>').append($('<a>').attr({'href': artist_profile.urls[key], 'target': '_blank'}).text(key.replace('_url',''))));
+                        }
+                    }
+                }
+            }
             if(typeof artist_profile.images[0] !== "undefined"){
                 var slider = $('<div>').addClass('slider center').css('width', '80%');
                 var slides = $('<ul>').addClass('slides');
