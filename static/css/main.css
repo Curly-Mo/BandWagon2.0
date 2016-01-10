@@ -1,5 +1,5 @@
 html {
-    background-color: #14181B;
+    background-color: #000000;
     color: #ebebec;
     overflow: hidden;
 }
@@ -16,6 +16,7 @@ body {
 }
 header {
     flex-shrink: 0;
+    z-index: 9999;
 }
 main{
     flex-grow: 1;
@@ -29,6 +30,7 @@ footer{
 nav {
     background-color: #14181B;
     color: #ebebec;   
+    z-index: 9999;
 }
 
 .side-nav {
@@ -48,12 +50,11 @@ nav {
     padding: 10px;
 }
 .date-picker-wrapper {
-    z-index: 999;
+    z-index: 9999;
 }
 
 .fixed-footer {
     box-shadow: 2px 2px 5px 5px rgba(0,0,0,0.16), 2px 2px 10px 5px rgba(0,0,0,0.12);
-    z-index: 50;
 }
 
 nav .btn {
@@ -112,10 +113,13 @@ nav a.button-collapse span  {
 }
 
 .pane {
-    float: left;
     overflow: auto;
     left: auto;
     right: auto;
+    width: 65%;
+}
+#event-pane {
+    padding: 5px;
 }
 @media only screen and (max-width: 600px) {
     #volume-container {
@@ -131,8 +135,11 @@ nav a.button-collapse span  {
     i.large{
         font-size: 3rem !important;
     }
-    .pane {
+    .pane{
         width: 100%;
+    }
+    .custom-hide-on-small {
+        display: none;
     }
 }
 @media only screen and (min-width: 600px) and (max-width: 992px) {
@@ -149,8 +156,9 @@ nav a.button-collapse span  {
     i.large{
         font-size: 5rem !important;
     }
-    .pane {
+    .pane.left{
         width: 45%;
+        max-width: 450px;
     }
 }
 @media only screen and (min-width: 993px) {
@@ -167,8 +175,9 @@ nav a.button-collapse span  {
     i.large{
         font-size: 6rem !important;
     }
-    .pane {
+    .pane.left{
         width: 45%;
+        max-width: 450px;
     }
 }
 
@@ -183,13 +192,15 @@ nav a.button-collapse span  {
     border-color: #393944;
 }
 .collection .collection-item.active{
-    background-color: #46BDDF;
+    background-color: #20A2C7;
 }
 
 .collection .collection-item.avatar {
     min-height: 0;
 }
-
+.collection .collection-item.avatar p {
+    margin-right: 10px;
+}
 .collection .collection-item.avatar .image {
     position: absolute;
     width: 42px;
@@ -201,22 +212,15 @@ nav a.button-collapse span  {
 }
 
 #loader {
-    position: fixed;
-    top: 50%;
-    left: 50%;
+    margin-top: 20%;
     text-align: center;
-    -webkit-transform: translateX(-50%) translateY(-50%);
-    -moz-transform: translateX(-50%) translateY(-50%);
-    -ms-transform: translateX(-50%) translateY(-50%);
-    -o-transform: translateX(-50%) translateY(-50%);
-    transform: translateX(-50%) translateY(-50%);
+    background-color: transparent;
 }
-
 
 .playlist-item {
     display: block;
     transition: .25s;
-    color: #46BDDF;
+    color: #20A2C7;
 }
 .playlist-item:not(.active):hover {
     background-color: #000000;
@@ -230,6 +234,9 @@ nav a.button-collapse span  {
     padding: 0;
 }
 
+#progress-container {
+    z-index: 999;
+}
 /* Progress bar*/
 #progress {
   height: 4px;
@@ -249,7 +256,7 @@ nav a.button-collapse span  {
   height: 0px;
   border-radius: 50%;
   box-shadow: none;
-  background-color: #46BDDF;
+  background-color: #20A2C7;
   border: none;
   left: -5px;
   top: -6px;
@@ -289,7 +296,7 @@ nav a.button-collapse span  {
   width: 30px;
   top: -17px;
   left: -2px;
-  background-color: #46BDDF;
+  background-color: #20A2C7;
   border-radius: 50%;
   transition: border-radius .25s cubic-bezier(0.215, 0.610, 0.355, 1.000),
               transform .25s cubic-bezier(0.215, 0.610, 0.355, 1.000);
@@ -317,7 +324,7 @@ nav a.button-collapse span  {
 }
 /* end Progress Bar*/
 .noUi-connect {
-   background: #46BDDF; 
+   background: #20A2C7; 
 }
 
 #distance {
@@ -338,6 +345,19 @@ nav a.button-collapse span  {
     border: none;
     pointer-events: none;
     z-index: 2;
+    display: none;
+}
+
+#track-length {
+    position: absolute;
+    right: 0;
+    margin-top: -20px;
+    display: none;
+}
+#track-time{
+    position: absolute;
+    margin-top: -20px;
+    margin-left: -10px;
     display: none;
 }
 
@@ -362,4 +382,39 @@ nav a.button-collapse span  {
 .marquee {
   white-space: nowrap;
   overflow: scroll;
+}
+
+#event-artists {
+    margin-top: 20px;
+}
+#event-artists li .collapsible-header {
+    background-color: #202223; 
+    border-bottom: 1px solid #32323E;
+}
+#event-artists li .collapsible-body {
+    background-color: #202223; 
+    border-bottom: 1px solid #32323E;
+    padding: 5px;
+}
+
+.collapsible-body p {
+    padding: 0 2rem;
+    text-align: justify;
+}
+
+.switch label input[type=checkbox]:checked+.lever {
+    background-color: #20A2C7;
+}
+.switch label input[type=checkbox]:checked+.lever:after {
+    background-color: #20A2C7;
+}
+
+.collection .collection-item.avatar .secondary-content {
+    top: 0;
+    right: 0;
+    height: 100%;
+    padding: 0 4px;
+    background-color: #202223;
+    color: #90a4ae;
+    border-radius: 0;
 }

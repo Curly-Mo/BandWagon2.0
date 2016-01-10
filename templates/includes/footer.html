@@ -1,9 +1,10 @@
 <div id="progress-container">
-    <img id="waveform" alt="">
+    <div id="track-time"></div>
+    <div id="track-length"></div>
+    <img id="waveform" alt="" src="/images/transparent.gif">
     <div id="progress"></div>
 </div>
 <nav class="fixed-footer">
-
     <div class="nav-wrapper player">
         <div class="left hide-on-med-and-down">
             <div id="now-playing">
@@ -14,6 +15,9 @@
                 </div>
             </div>
         </div>
+        <a class="left waves-effect waves-light btn" id='show-playlist' style="display: none;">
+            <i class="material-icons">queue_music</i>
+        </a>
 
         <div class="right">
             <a id="volume-button" class="waves-effect waves-light btn"><i class="material-icons small">volume_up</i></a>

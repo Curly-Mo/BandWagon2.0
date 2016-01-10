@@ -1,13 +1,21 @@
 <main>
     <div class="pane left" id="playlist-pane">
-        <ul class="collection z-depth-2" id="playlist">
-        </ul>
+        <ul class="collection z-depth-2" id="playlist"></ul>
     </div>
-    <div class="pane right hide-on-small-only">
-        Something else goes here
+    <div class="pane right custom-hide-on-small" id="event-pane">
+        <h4 id="event-title" class="center flow-text"></h4>
+        <h5 id="event-venue" class="center flow-text"><a  class="" target="_blank"></a></h5>
+        <div class="center blue-grey-text text-lighten-2">
+            <span id="event-date" class="center flow-text"><a target="_blank"></a></span>
+            <span id="event-time"></span>
+        </div>
+        <div id="event-tickets" class="right"><a class="blue-grey-text text-lighten-2" target="_blank"></a></div>
+        <br>
+        <div id="event-lineup" class="left blue-grey-text text-lighten-2"></div>
+        <ul id="event-artists" class="collapsible popout" data-collapsible="accordion"></ul>
     </div>
 
-    <div id="loader">
+    <div id="loader" class="modal">
         <div class="preloader-wrapper big active">
             <div class="spinner-layer spinner-blue-only">
                 <div class="circle-clipper left">

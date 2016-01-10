@@ -1,5 +1,23 @@
-<form>
+<form id="settings-form">
     <div class="header">Concert Settings</div>
+    <label for="autoplay">Autoplay:</label>
+    <div class="switch center">
+        <label>
+            Off
+            <input type="checkbox" id="autoplay">
+            <span class="lever"></span>
+            On
+        </label>
+    </div>
+    <label for="geolocation">Improve location accuracy:</label>
+    <div class="switch center">
+        <label>
+            Off
+            <input type="checkbox" id="geolocation">
+            <span class="lever"></span>
+            On
+        </label>
+    </div>
     <label for="daterange">Date Range:</label>
     <input class="datepicker" id="daterange" readonly>
     <label for="distance">Distance:</label>

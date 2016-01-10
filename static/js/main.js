@@ -12,12 +12,14 @@ function init(){
     $('#prev-button').on('tap click', prev);
     $('#next-button').on('tap click', next);
     init_settings();
-    get_events();
+    refresh_playlist();
     init_volume();
     init_audio();
     init_progress();
-
     document.addEventListener('keydown', keydown, false)
+    $('#show-playlist').on('tap click', function(){
+        active_pane($('#playlist-pane'));
+    });
 }
 
 var audioCtx;
@@ -28,9 +30,12 @@ var events = {};
 var artists = {};
 var tracks = {};
 var promises = [];
+var coords;
 var settings = {
-    'startdate': moment().local().format('YYYY-MM-DD'),
-    'enddate': moment().local().add(1, 'months').format('YYYY-MM-DD'),
+    'autoplay': true,
+    'geolocation': false,
+    'startdate': 0,
+    'enddate': moment().local().startOf('day').add(1, 'months').diff(moment().local().startOf('day'), 'days'),
     'distance': '20mi',
 }
 
@@ -55,7 +60,7 @@ function play(){
     audio_source.mediaElement.play();
     var e = $('#play');
     if(e.html() == 'play_arrow'){
-        e.fadeTo('fast', 0.1, function() {
+        e.stop().fadeTo('fast', 0.1, function() {
             e.html('pause');
         }).fadeTo('fast', 1);
     }
@@ -65,7 +70,7 @@ function pause(){
     audio_source.mediaElement.pause();
     var e = $('#play');
     if(e.html() == 'pause'){
-        e.fadeTo('fast', 0.1, function() {
+        e.stop().fadeTo('fast', 0.1, function() {
             e.html('play');
         }).fadeTo('fast', 1);
     }
@@ -79,16 +84,14 @@ function play_toggle(){
         }else{
             audio_source.mediaElement.play();
         }
-        e.fadeOut('fast', function() {
+        e.stop().fadeTo('fast', 0.1, function() {
             e.html('pause');
-            e.fadeIn('fast');
-        });
+        }).fadeTo('fast', 1);
     }else{
         audio_source.mediaElement.pause();
-        e.fadeOut('fast', function() {
+        e.stop().fadeTo('fast', 0.1, function() {
             e.html('play_arrow');
-            e.fadeIn('fast');
-        });
+        }).fadeTo('fast', 1);
     }
 }
 
@@ -160,6 +163,16 @@ function init_progress(){
             value = (100 / audio.duration) * audio.currentTime;
         }
         slider.noUiSlider.set(value);
+        if(audio.duration){
+            $('#track-length').text(formatSeconds(audio.duration));
+        }
+        if(audio.duration){
+            $('#track-time').text(formatSeconds(audio.currentTime));
+        }
+        $('#track-time').css('left', value + '%');
+        if(value > 95){
+            $('#track-time').fadeOut('slow');
+        }
     }
     slider.noUiSlider.on('slide', set_progress);
     function set_progress(value){
@@ -168,59 +181,81 @@ function init_progress(){
     var progress_container= document.querySelector('#progress-container');
     progress_container.addEventListener('mouseover', showWaveform, false);
     progress_container.addEventListener('mouseleave', hideWaveform, false);
-    var timeout;
     function showWaveform(){
-        timeout = setTimeout(function() {
-            $('#waveform').fadeIn(100);
-            $('#progress').animate({ height: '80px' }, 'easeInOutCubic');
-        }, 0.1 * 1000)
+        $('#waveform, #track-length, #track-time').fadeIn(100);
+        $('#progress').clearQueue().stop().animate({ height: '80px' }, 'easeInOutCubic');
     }
     function hideWaveform(){
-        if(timeout) {
-            clearTimeout(timeout);
-        }
-        $('#waveform').fadeOut('fast');
-        $('#progress').animate({ height: '4px' }, 'easeInOutCubic');
+        $('#waveform, #track-length, #track-time').fadeOut('fast');
+        $('#progress').clearQueue().stop().animate({ height: '4px' }, 'easeInOutCubic');
     }
 }
 
 function get_events(){
-    var base_url = 'http://api.seatgeek.com/2/events?';
+    var base_url = '//api.seatgeek.com/2/events?';
     var daterange = $('#daterange').val().split(' to ');
     var params = {
         aid: 11799,
         client_id: 'NDA0ODEwNnwxNDUxNTIwNTY1',
         geoip: true,
-        range: settings.distance || "20mi",
+        range: window.settings.distance || "20mi",
         'taxonomies.name': 'concert',
-        'datetime_utc.gte': settings.startdate || moment().local().format(),
-        'datetime_utc.lte': settings.enddate || moment().local().add(1, 'months').format(),
+        'datetime_utc.gte': moment().local().startOf('day').add(window.settings.startdate, 'days').format('YYYY-MM-DD'),
+        'datetime_utc.lte': moment().local().startOf('day').add(window.settings.enddate, 'days').format('YYYY-MM-DD'),
         per_page: 1000,
     }
-    var query_string = $.param(params);
-    var url = base_url + query_string;
+    if(window.coordinates){
+        params['lat'] = window.coordinates.latitude;
+        params['lon'] = window.coordinates.longitude;
+    }else{
+        params['geoip'] = true;
+    }
+    var url = base_url + $.param(params);
+    //console.log(url)
+    $('#loader').openModal({
+       opacity: 0.8,
+       dismissible: false,
+    });
+    $('#loading-message').text('Finding concerts...').fadeIn(200);;
     $.ajax({
         url: url,
         tryCount : 0,
         retryLimit : 1,
         timeout: 20000,
-        beforeSend: function() {
-            $('#loader').show();
-            $('#loading-message').text('Finding concerts...').fadeIn(200);;
-        },
         complete: function(){
-            //$('#loader').hide();
+            //$('#loader').closeModal();
         },
         success: function(response){
-            $('#loader').hide();
-            parse_events(response.events);
+            if(response.events.length > 0) {
+                //$('#loader').closeModal({out_duration: 0});
+                parse_events(response.events);
+            }else{
+                this.tryCount++;
+                if(this.tryCount <= 10){
+                    if(this.tryCount <= 1){
+                        $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
+                            $(this).text('Increasing search radius...');
+                        }).fadeTo(500, 1);
+                    }
+                    params.range = parseFloat(params.range.slice(0,-2)) + 2 + 'mi';
+                    params['datetime_utc.lte'] = moment(params['datetime_utc.lte']).add(2, 'days').format('YYYY-MM-DD'),
+                    this.url = base_url + $.param(params);
+                    console.log(response);
+                    $.ajax(this);
+                }else{
+                    $('#loader').html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
+                        +   "No concerts found in: " + response.meta.geolocation.display_name +"<br>"
+                        +   "Is this not where you are? Try enabling improved location accuracy in Settings."
+                    );
+                }
+            }
         },
         error: function (response, status, error) {
             this.tryCount++;
             if(this.tryCount <= this.retryLimit){
-                $('#loading-message').fadeOut(500, function() {
-                    $(this).text('Retrying...').fadeIn(500);
-                });
+                $('#loading-message').stop().fadeTo(500, 0.1, function() {
+                    $(this).text('Retrying...');
+                }).fadeTo(500, 1);
                 $.ajax(this);
             }else{
                 $('#loader').html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
@@ -252,10 +287,12 @@ function parse_events(events){
                             url: soundcloud_url(performer.name),
                             context: document.body,
                             beforeSend: function() {
-                                $('#loader').show();
-                                $('#loading-message').fadeOut(500, function() {
-                                    $(this).text('Loading tracks...').fadeIn(500);
-                                });
+                                if(!$('#loader').is(':visible')){
+                                    $('#loader').openModal({in_duration: 0});
+                                }
+                                $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
+                                    $(this).text('Loading tracks...');
+                                }).fadeTo(500, 1);
                             },
                             success: function(response){
                                 parse_tracks(response, event.id, performer.id);
@@ -268,16 +305,21 @@ function parse_events(events){
     }
     $.when.apply($, promises).then(function() {
         // returned data is in arguments[0][0], arguments[1][0], ... arguments[9][0]
-        $('#loader').fadeOut(300);
+        $('#loader').closeModal();
         load_tracks();
-    }, function() {
+        promises.length = 0;
+    }, function(e) {
         // error occurred
-        $('#loader').hide();
+        console.log(e);
+        $('#loader').closeModal();
+        // Try to load anyway
+        load_tracks();
+        promises.length = 0;
     });
 }
 
 function soundcloud_url(artist){
-    var base_url = 'http://api.soundcloud.com/tracks';
+    var base_url = '//api.soundcloud.com/tracks';
     var params = {
         'client_id': 'f1686e09dcc2a404eccb6f8473803687',
         'order': 'hotness',
@@ -327,10 +369,24 @@ function load_tracks(){
                 .append($('<img>').attr({'class': 'image', 'src': track.image}))
                 .append($('<span>').attr('class', 'title').html(window.artists[track.artist_id].name))
                 .append($('<p>').html(track.title))
+                .append($('<a>').addClass('secondary-content waves-effect waves-light btn').append($('<i>').addClass('material-icons').text('info_outline')))
         );
     }
-    $('.playlist-item').on('tap click', play_item);
-    if(!isMobile() && audio.paused){
+    $('.playlist-item').on('tap click', function(e){
+        // Need to check correct target since Hammer doesn't prevent bubbling with onTap
+        if(e.gesture && $(e.gesture.target).closest('.secondary-content')){
+            return
+        }
+        play_item.call(this);
+    });
+    $('.playlist-item .secondary-content').on('tap click', function(e) {
+        set_event_info(window.tracks[$(e.target).parents('[data-id]').attr('data-id')].event_id);
+        if(window.matchMedia('(max-width: 600px)').matches){
+            active_pane($('#event-pane'));
+        }
+        return false;
+    });
+    if(!isMobile() && document.querySelector('#autoplay').checked && audio.paused){
         $('.playlist-item').first().trigger('click');
     }
     init_dismissables();
@@ -350,7 +406,7 @@ function play_item(){
     play_track(this.getAttribute('data-id'));
     this.classList.add('active');
     // Scroll to top
-    $(this).parent().parent().stop().animate({
+    $(this).parent().parent().clearQueue().stop().animate({
         scrollTop: $(this).offset().top - $(this).parent().offset().top
     }, 1000);
 }
@@ -360,11 +416,12 @@ function play_track(track_id){
     play();
     document.querySelector('#waveform').setAttribute('src', tracks[track_id].waveform_url);
     var track = tracks[track_id];
-    $('#now-playing').fadeTo(900, 0.05, function() {
+    $('#now-playing').clearQueue().stop().fadeTo(900, 0.05, function() {
         $('#now-playing > img').attr("src", track.image);
         $('#now-playing-artist').text(window.artists[track.artist_id].name);
         $('#now-playing-title').text(track.title);
     }).fadeTo(1000,1);
+    set_event_info(track.event_id);
 }
 
 function keydown(e){
@@ -388,7 +445,20 @@ function keydown(e){
 
 function refresh_playlist() {
     $('#playlist').empty();
-    get_events();
+    if(window.settings.geolocation && 'geolocation' in navigator && !window.coordinates){
+        $('#loading-message').text('Determining your location...').fadeIn(200);;
+        navigator.geolocation.getCurrentPosition(success, error, {maximumAge:60*60*1000, timeout:8000, enableHighAccuracy: false});
+        function success(position) {
+            window.coordinates = position.coords;
+            console.log(window.coordinates);
+            get_events();
+        }
+        function error(position) {
+            get_events();
+        }
+    }else{
+        get_events();
+    }
 }
 
 function init_dismissables(){
@@ -474,13 +544,11 @@ function init_settings(){
         showTopbar: false,
         startDate: moment().local().format(),
         setValue: function(s){
-            if(!$(this).is(':disabled') && s != $(this).val())
-            {
+            if(!$(this).is(':disabled') && s != $(this).val()){
                 $(this).val(s);
             }
         },
     });
-    $('#daterange').data('dateRangePicker').setDateRange(moment().local().format(), moment().local().add(1, 'months').format());
 
     var slider = document.querySelector('#distance');
     noUiSlider.create(slider, {
@@ -499,22 +567,240 @@ function init_settings(){
                 return value + 'mi';
             },
             from: function ( value ) {
-                return value;
+                return value.slice(0, -2);;
             }
         },
     });
+    $('#geolocation').on('change', function() {
+        if(this.checked) {
+            navigator.geolocation.getCurrentPosition(function(position){
+                window.coordinates = position.coords;
+                console.log(window.coordinates);
+            }, null, {maximumAge:60*60*1000, timeout:8000, enableHighAccuracy: false});
+        }
+    });
+
     $('.drag-target').on('click touchstart', update_settings);
+    load_settings();
+}
+
+function load_settings(){
+    var new_settings = localStorage.getItem('settings');
+    if(new_settings){
+        window.settings = JSON.parse(new_settings);
+    }
+    $('#daterange').data('dateRangePicker').setDateRange(
+        moment().local().startOf('day').add(window.settings.startdate, 'days').format(),
+        moment().local().startOf('day').add(window.settings.enddate, 'days').format()
+    );
+    document.querySelector('#distance').noUiSlider.set(window.settings.distance);
+    document.querySelector('#autoplay').checked = window.settings.autoplay;
+    document.querySelector('#geolocation').checked = window.settings.geolocation;
 }
 
 function update_settings(){
     var daterange = $('#daterange').val().split(' to ');
     var new_settings = {
-        'startdate': daterange[0],
-        'enddate': daterange[1],
+        'autoplay': document.querySelector('#autoplay').checked,
+        'geolocation': document.querySelector('#geolocation').checked,
+        'startdate': moment(daterange[0]).local().startOf('day').diff(moment().local().startOf('day'), 'days'),
+        'enddate': moment(daterange[1]).local().startOf('day').diff(moment().local().startOf('day'), 'days'),
         'distance': document.querySelector('#distance').noUiSlider.get(),
     }
     if(JSON.stringify(window.settings) !== JSON.stringify(new_settings)){
         window.settings = new_settings;
+        localStorage['settings'] = JSON.stringify(new_settings);
         refresh_playlist();
+    }
+}
+
+function formatSeconds(seconds){
+    var date = new Date(null);
+    date.setSeconds(seconds);
+    var timestring = date.toISOString().substr(11, 8);
+    timestring = timestring.replace(/^0+/, '')
+    timestring = timestring.replace(/^:+/, '')
+    timestring = timestring.replace(/^0/, '')
+    return timestring
+}
+
+function set_event_info(event_id){
+    var event = events[event_id];
+    // Title
+    $('#event-title').clearQueue().stop().fadeTo('medium', 0.1, function() {
+        $(this).text(event.title);
+    }).fadeTo('medium', 1);
+    // Venue
+    var maps_url = '//maps.google.com/?';
+    var params = {
+        'q': event.venue.name,
+        //'ll': event.venue.location.lat+','+event.venue.location.lon,
+    }
+    maps_url = maps_url + $.param(params);
+    $('#event-venue').clearQueue().stop().fadeTo('medium', 0.1, function() {
+        $(this).find('a').text('@ ' + event.venue.name);
+        $(this).find('a').attr('href', maps_url);
+    }).fadeTo('medium', 1);
+    // Date
+    var time = '';
+    if(!event.time_tbd){
+        time = moment(event.datetime_local).format('h:mma');
+    }
+    var calendar_url = '//www.google.com/calendar/event?';
+    var params = {
+        'action': 'TEMPLATE',
+        'text': event.title,
+        'dates': moment(event.datetime_local).format('YYYYMMDDTHHmmss') +'/'+ moment(event.datetime_local).format('YYYYMMDDTHHmmss'),
+        'location': event.venue.name,
+        //TODO
+        'details': 'bandwagon.pl',
+        'trp': false,
+        'sprop': 'name:Band Wagon',
+        'sprop':'website:bandwagon.pl',
+    }
+    calendar_url = calendar_url + $.param(params);
+    $('#event-date').clearQueue().stop().fadeTo('medium', 0.1, function() {
+        $(this).find('a').text(moment(event.datetime_local).format('dddd, MMM Do'));
+        $(this).find('a').attr('href', calendar_url);
+    }).fadeTo('medium', 1);
+    $('#event-time').clearQueue().stop().fadeTo('medium', 0.1, function() {
+        $(this).text(time);
+    }).fadeTo('medium', 1);
+    // Tickets
+    $('#event-tickets').clearQueue().stop().fadeTo('medium', 0.1, function() {
+         $(this).find('a').attr('href', event.url);
+         $(this).find('a').text('Purchase Tickets');
+    }).fadeTo('medium', 1);
+    $('#event-lineup').clearQueue().stop().fadeTo('medium', 0.1, function() {
+         $(this).text('Lineup:');
+    }).fadeTo('medium', 1);
+    // Artists
+    $('#event-artists').clearQueue().stop().fadeTo('medium', 0.1, function() {
+        $(this).empty();
+        for(var i=0;i<event.performers.length;i++){
+            var artist = event.performers[i];
+            var el = $('<li>').addClass('artist-item').attr('data-artist-id', artist.id)
+                    .append($('<div>').addClass('collapsible-header').text(artist.name))
+                    .append($('<div>').addClass('collapsible-body'))
+            $(this).append(el);
+            if(artist.id == tracks[$('.playlist-item.active').attr('data-id')].artist_id){
+                el.children().first().addClass('active');
+            }
+            echonest_artist_info(artist.id);
+        }
+        $(this).collapsible();
+    }).fadeTo('medium', 1);
+}
+
+function echonest_artist_info(artist_id){
+    var apiKey = "8C0DI9VHHE8BZSPOP";
+    //var id = "jambase:artist:"+artistID;
+    var echonest_url = 'http://developer.echonest.com/api/v4/artist/profile?';
+    var params = {
+        'api_key': apiKey,
+        'name': artists[artist_id].name,
+        'bucket': [
+            'biographies',
+            'familiarity',
+            'hotttnesss',
+            'images',
+            'artist_location',
+            'news',
+            'reviews',
+            'urls',
+            'video',
+            'years_active',
+            'terms',
+        ],
+        'format': 'json',
+    }
+    var url = echonest_url + $.param(params, true);
+    //console.log(url)
+    $.ajax({
+        url: url,
+        tryCount : 0,
+        retryLimit : 1,
+        timeout: 10000,
+        success : function(data) {
+            var artist_profile = data.response.artist;
+            //console.log(artist_profile);
+            var body = $('.artist-item[data-artist-id="' + artist_id  + '"] .collapsible-body');
+            if(typeof artist_profile === "undefined"){
+                body.append($('<p>').text('Unknown artist'));
+                return;
+            }
+            if(typeof artist_profile.biographies[0] !== "undefined"){
+                body.append($('<label>').text('Bio:'))
+                    .append($('<p>').html(best_bio(artist_profile.biographies)))
+            }
+            if(typeof artist_profile.terms[0] !== "undefined"){
+                var terms = artist_profile.terms.map(function(term) {return term.name;}).join(', ');
+                body.append($('<label>').text('Genre:'))
+                    .append($('<p>').text(terms));
+            }
+            if(typeof artist_profile.artist_location !== "undefined" && typeof artist_profile.artist_location.location !== "undefined"){
+                body.append($('<label>').text('Hometown:'))
+                    .append($('<p>').text(artist_profile.artist_location.location));
+            }
+            if(typeof artist_profile.images[0] !== "undefined"){
+                var slider = $('<div>').addClass('slider center').css('width', '80%');
+                var slides = $('<ul>').addClass('slides');
+                for(var i = 0; i < artist_profile.images.length; i++) {
+                    if(artist_profile.images[i].url.indexOf('userserve-ak.last.fm') == -1){
+                        slides.append($('<li>').append($('<img>').attr('src', artist_profile.images[i].url)));
+                    }
+                }
+                if(slides.children().length > 0){
+                    body.append(slider.append(slides));
+                    slider.slider({
+                        indicators: true,
+                        height: 300,
+                        transition: 1200,
+                        interval: 6000,
+                        full_width: false,
+                    });
+                }
+            }
+            return
+            if(typeof artistProfile.video[0] !== "undefined"){
+                $("#info-artist-videos").html(getVideos(artistProfile.video));  
+            }
+        }
+    });
+}
+
+function best_bio(bios) {
+    var best = null;
+    var text;
+    if (bios.length > 0) {
+        best = bios[0];
+        for (var i = 0; i < bios.length; i++) {
+            if (bios[i].site == 'wikipedia') {
+                best = bios[i];
+            }
+            if (bios[i].site == 'last.fm' && best.site != 'wikipedia') {
+                best = bios[i];
+            }
+        }
+    }
+    text = best.text.replace(/Contents\n\n1[\s\S]*edit:/,"<br>");
+    if(text.length > 600){
+        var end_index = 600 + text.substring(600).indexOf('.') + 1;
+        text = text.substring(0, end_index);
+        text += " <a target='_blank' href='" + best.url + "'>" + best.url + "</a>";
+    }
+    return text;
+}
+
+function active_pane(pane){
+    if(window.matchMedia('(max-width: 600px)').matches){
+        $('.pane').not(pane).animate({width:'hide'}, 350);
+    }
+    if(pane.attr('id') != 'playlist-pane'){
+        $('#show-playlist').fadeTo('slow', 1);
+    }
+    pane.animate({width:'show'}, 350);
+    if(pane.attr('id') == 'playlist-pane'){
+       $('#show-playlist').fadeTo('slow', 0);
     }
 }
