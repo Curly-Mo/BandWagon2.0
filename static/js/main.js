@@ -1,6 +1,15 @@
 "use strict";
 window.addEventListener("load", init, false);
 function init(){
+    if(navigator.userAgent.toLowerCase().indexOf('firefox') > -1 && navigator.appVersion.toLowerCase().indexOf("win") > -1){
+        Materialize.toast("This page does not run well in Firefox. Use Chrome for a better experience.", 5000)
+    }
+    if(navigator.userAgent.toLowerCase().indexOf('msie ') > -1 ||
+       navigator.userAgent.toLowerCase().indexOf('trident/') >-1 ||
+       navigator.userAgent.toLowerCase().indexOf('edge/') > -1){
+        Materialize.toast("This page does not run well in Internet Exporer. Use Chrome or Safari for a better experience.", 5000)
+    }
+
     // Initialize collapse button
     $('.button-collapse').sideNav({
         menuWidth: 300, // Default is 240
@@ -20,6 +29,7 @@ function init(){
     $('#show-playlist').on('tap click', function(){
         active_pane($('#playlist-pane'));
     });
+
 }
 
 var audioCtx;
@@ -40,24 +50,25 @@ var settings = {
 }
 
 function init_audio(){
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     audio = new Audio();
     audio.crossOrigin = "anonymous";
-    audio_source = audioCtx.createMediaElementSource(audio);
-    gain_node = audioCtx.createGain();
-    audio_source.connect(gain_node);
-    gain_node.connect(audioCtx.destination);
-
-    var volume = document.querySelector('#volume-slider');
-    gain_node.gain.value = volume.noUiSlider.get()/100.0;
-    volume.noUiSlider.on('update', function(){
+    if(window.AudioContext || window.webkitAudioContext){
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audio_source = audioCtx.createMediaElementSource(audio);
+        gain_node = audioCtx.createGain();
+        audio_source.connect(gain_node);
+        gain_node.connect(audioCtx.destination);
+        var volume = document.querySelector('#volume-slider');
         gain_node.gain.value = volume.noUiSlider.get()/100.0;
-    });
+        volume.noUiSlider.on('update', function(){
+            gain_node.gain.value = volume.noUiSlider.get()/100.0;
+        });
+    }
     audio.addEventListener('ended', next);
 }
 
 function play(){
-    audio_source.mediaElement.play();
+    audio.play();
     var e = $('#play');
     if(e.html() == 'play_arrow'){
         e.stop().fadeTo('fast', 0.1, function() {
@@ -67,7 +78,7 @@ function play(){
 }
 
 function pause(){
-    audio_source.mediaElement.pause();
+    audio.pause();
     var e = $('#play');
     if(e.html() == 'pause'){
         e.stop().fadeTo('fast', 0.1, function() {
@@ -82,13 +93,13 @@ function play_toggle(){
         if(!document.querySelector('.playlist-item.active')){
             $('.playlist-item').first().trigger('click');
         }else{
-            audio_source.mediaElement.play();
+            audio.play();
         }
         e.stop().fadeTo('fast', 0.1, function() {
             e.html('pause');
         }).fadeTo('fast', 1);
     }else{
-        audio_source.mediaElement.pause();
+        audio.pause();
         e.stop().fadeTo('fast', 0.1, function() {
             e.html('play_arrow');
         }).fadeTo('fast', 1);
@@ -447,15 +458,15 @@ function refresh_playlist() {
     $('#playlist').empty();
     if(window.settings.geolocation && 'geolocation' in navigator && !window.coordinates){
         $('#loading-message').text('Determining your location...').fadeIn(200);;
-        navigator.geolocation.getCurrentPosition(success, error, {maximumAge:60*60*1000, timeout:8000, enableHighAccuracy: false});
-        function success(position) {
+        var success = function(position) {
             window.coordinates = position.coords;
             console.log(window.coordinates);
             get_events();
-        }
-        function error(position) {
+        };
+        var error = function(position) {
             get_events();
-        }
+        };
+        navigator.geolocation.getCurrentPosition(success, error, {maximumAge:60*60*1000, timeout:8000, enableHighAccuracy: false});
     }else{
         get_events();
     }
@@ -634,7 +645,8 @@ function set_event_info(event_id){
     var maps_url = '//maps.google.com/?';
     var params = {
         'q': event.venue.name,
-        //'ll': event.venue.location.lat+','+event.venue.location.lon,
+        'll': event.venue.location.lat+','+event.venue.location.lon,
+        'z': 15,
     }
     maps_url = maps_url + $.param(params);
     $('#event-venue').clearQueue().stop().fadeTo('medium', 0.1, function() {
@@ -655,10 +667,12 @@ function set_event_info(event_id){
         //TODO
         'details': 'bandwagon.pl',
         'trp': false,
-        'sprop': 'name:Band Wagon',
-        'sprop':'website:bandwagon.pl',
+        'sprop': [
+            'name:Band Wagon',
+            'website:bandwagon.pl',
+        ],
     }
-    calendar_url = calendar_url + $.param(params);
+    calendar_url = calendar_url + $.param(params, true);
     $('#event-date').clearQueue().stop().fadeTo('medium', 0.1, function() {
         $(this).find('a').text(moment(event.datetime_local).format('dddd, MMM Do'));
         $(this).find('a').attr('href', calendar_url);
@@ -683,7 +697,7 @@ function set_event_info(event_id){
                     .append($('<div>').addClass('collapsible-header').text(artist.name))
                     .append($('<div>').addClass('collapsible-body'))
             $(this).append(el);
-            if(artist.id == tracks[$('.playlist-item.active').attr('data-id')].artist_id){
+            if($('.playlist-item.active').length && artist.id == tracks[$('.playlist-item.active').attr('data-id')].artist_id){
                 el.children().first().addClass('active');
             }
             echonest_artist_info(artist.id);
@@ -711,6 +725,9 @@ function echonest_artist_info(artist_id){
             'video',
             'years_active',
             'terms',
+            'genre',
+            'reviews',
+            'years_active',
         ],
         'format': 'json',
     }
@@ -723,7 +740,7 @@ function echonest_artist_info(artist_id){
         timeout: 10000,
         success : function(data) {
             var artist_profile = data.response.artist;
-            //console.log(artist_profile);
+            console.log(artist_profile);
             var body = $('.artist-item[data-artist-id="' + artist_id  + '"] .collapsible-body');
             if(typeof artist_profile === "undefined"){
                 body.append($('<p>').text('Unknown artist'));
@@ -761,10 +778,9 @@ function echonest_artist_info(artist_id){
                     });
                 }
             }
-            return
-            if(typeof artistProfile.video[0] !== "undefined"){
-                $("#info-artist-videos").html(getVideos(artistProfile.video));  
-            }
+            //if(typeof artistProfile.video[0] !== "undefined"){
+            //    $("#info-artist-videos").html(getVideos(artistProfile.video));  
+            //}
         }
     });
 }
@@ -787,7 +803,7 @@ function best_bio(bios) {
     if(text.length > 600){
         var end_index = 600 + text.substring(600).indexOf('.') + 1;
         text = text.substring(0, end_index);
-        text += " <a target='_blank' href='" + best.url + "'>" + best.url + "</a>";
+        text += " <a target='_blank' href='" + best.url + "'>Read More</a>";
     }
     return text;
 }

@@ -2,6 +2,7 @@ html {
     background-color: #000000;
     color: #ebebec;
     overflow: hidden;
+    overflow: -moz-scrollbars-none;
 }
 body {
     position: absolute;
@@ -42,7 +43,6 @@ nav {
 .side-nav input {
     cursor: pointer;
     text-align: center;
-    margin: 
 }
 .side-nav .header {
     text-align: center;
@@ -55,6 +55,7 @@ nav {
 
 .fixed-footer {
     box-shadow: 2px 2px 5px 5px rgba(0,0,0,0.16), 2px 2px 10px 5px rgba(0,0,0,0.12);
+    flex-shrink: 0;
 }
 
 nav .btn {

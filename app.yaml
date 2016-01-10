@@ -4,6 +4,8 @@ runtime: python27
 api_version: 1
 threadsafe: true
 
+default_expiration: "800d 0h"
+
 handlers:
 - url: /images/favicon.ico
   static_files: static/images/favicon.ico
@@ -16,8 +18,17 @@ handlers:
   static_dir: static/images
 - url: /materialize
   static_dir: static/materialize
+
+- url: /css/main.css
+  static_dir: static/css/main.css
+  expiration: "10d 0h"
+- url: /js/main.js
+  static_dir: static/js/main.js
+  expiration: "10d 0h"
+
 - url: /.*
   script: main.app
+  expiration: "10d 0h"
 
 libraries:
 - name: webapp2
