@@ -223,10 +223,12 @@ function get_events(){
     }
     var url = base_url + $.param(params);
     //console.log(url)
-    $('#loader').openModal({
-       opacity: 0.8,
-       dismissible: false,
-    });
+    if(!$('#loader').is(':visible')){
+        $('#loader').openModal({
+            opacity: 0.8,
+            dismissible: false,
+        });
+    }
     $('#loading-message').text('Finding concerts...').fadeIn(200);;
     $.ajax({
         url: url,
@@ -299,7 +301,11 @@ function parse_events(events){
                             context: document.body,
                             beforeSend: function() {
                                 if(!$('#loader').is(':visible')){
-                                    $('#loader').openModal({in_duration: 0});
+                                    $('#loader').openModal({
+                                        in_duration: 0,
+                                        opacity: 0.8,
+                                        dismissible: false,
+                                    });
                                 }
                                 $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
                                     $(this).text('Loading tracks...');
@@ -317,14 +323,14 @@ function parse_events(events){
     $.when.apply($, promises).then(function() {
         // returned data is in arguments[0][0], arguments[1][0], ... arguments[9][0]
         $('#loader').closeModal();
-        load_tracks();
+        load_tracks(create_track_list());
         promises.length = 0;
     }, function(e) {
         // error occurred
         console.log(e);
         $('#loader').closeModal();
         // Try to load anyway
-        load_tracks();
+        load_tracks(create_track_list());
         promises.length = 0;
     });
 }
@@ -371,10 +377,13 @@ function parse_tracks(tracks, event_id, artist_id){
     }
 }
 
-function load_tracks(){
-    var tracks = create_track_list();
-    for(var i = 0; i < tracks.length; i++) {
-        var track = tracks[i];
+function load_tracks(track_list){
+    var track_limit = 300;
+    if(isMobile()){
+        var track_limit = 25;
+    }
+    for(var i = 0; i < Math.min(track_list.length, track_limit); i++) {
+        var track = track_list[i];
         $('#playlist').append(
             $('<li>').attr({'class': 'collection-item dismissable avatar playlist-item', 'data-id': track.id})
                 .append($('<img>').attr({'class': 'image', 'src': track.image}))
@@ -397,6 +406,16 @@ function load_tracks(){
         }
         return false;
     });
+    if(track_limit < track_list.length){
+        var more = $('<a>').attr('class', 'collection-item dismissable center').text('Load more');
+        $('#playlist').append(more);
+        more.on('tap click', function(e){
+            e.preventDefault();
+            $(this).off();
+            load_tracks(track_list.slice(track_limit));
+            more.slideUp('slow').slideUp('slow', 'linear');
+        });
+    }
     if(!isMobile() && document.querySelector('#autoplay').checked && audio.paused){
         $('.playlist-item').first().trigger('click');
     }
@@ -420,6 +439,9 @@ function play_item(){
     $(this).parent().parent().clearQueue().stop().animate({
         scrollTop: $(this).offset().top - $(this).parent().offset().top
     }, 1000);
+    if($(this).parent().children().last().text() == 'Load more' && $(this).parent().children().length - $(this).parent().children().index(this) < 5){
+        $(this).parent().children().last().trigger('click');
+    }
 }
 
 function play_track(track_id){
@@ -433,6 +455,13 @@ function play_track(track_id){
         $('#now-playing-title').text(track.title);
     }).fadeTo(1000,1);
     set_event_info(track.event_id);
+    try{
+        ga('send', 'event', 'audio', 'play', {
+            eventLabel: window.artists[track.artist_id].name,
+            eventValue: track.title,
+        });
+    }catch(e){
+    }
 }
 
 function keydown(e){
@@ -457,6 +486,10 @@ function keydown(e){
 function refresh_playlist() {
     $('#playlist').empty();
     if(window.settings.geolocation && 'geolocation' in navigator && !window.coordinates){
+        $('#loader').openModal({
+            opacity: 0.8,
+            dismissible: false,
+        });
         $('#loading-message').text('Determining your location...').fadeIn(200);;
         var success = function(position) {
             window.coordinates = position.coords;
@@ -645,8 +678,8 @@ function set_event_info(event_id){
     var maps_url = '//maps.google.com/?';
     var params = {
         'q': event.venue.name,
-        'll': event.venue.location.lat+','+event.venue.location.lon,
-        'z': 15,
+        'sll': event.venue.location.lat+','+event.venue.location.lon,
+        //'z': 15,
     }
     maps_url = maps_url + $.param(params);
     $('#event-venue').clearQueue().stop().fadeTo('medium', 0.1, function() {

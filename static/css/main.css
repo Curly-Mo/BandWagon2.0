@@ -419,3 +419,7 @@ nav a.button-collapse span  {
     color: #90a4ae;
     border-radius: 0;
 }
+
+.collection a.collection-item {
+    color: #20A2C7;
+}
