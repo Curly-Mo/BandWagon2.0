@@ -118,6 +118,7 @@ nav a.button-collapse span  {
     left: auto;
     right: auto;
     width: 65%;
+    z-index: 2;
 }
 #event-pane {
     padding: 5px;
@@ -422,4 +423,14 @@ nav a.button-collapse span  {
 
 .collection a.collection-item {
     color: #20A2C7;
+}
+
+#logo-attribution {
+    position: absolute;
+    right: 0;
+    bottom: 64px;
+    z-index: -1;
+}
+#logo-attribution > * {
+    margin: 0 4px;
 }
