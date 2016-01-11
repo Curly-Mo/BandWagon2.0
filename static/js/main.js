@@ -211,9 +211,9 @@ function get_events(){
         geoip: true,
         range: window.settings.distance || "20mi",
         'taxonomies.name': 'concert',
-        'datetime_utc.gte': moment().local().startOf('day').add(window.settings.startdate, 'days').format('YYYY-MM-DD'),
-        'datetime_utc.lte': moment().local().startOf('day').add(window.settings.enddate, 'days').format('YYYY-MM-DD'),
-        per_page: 1000,
+        'datetime_local.gte': moment().local().startOf('day').add(window.settings.startdate, 'days').format('YYYY-MM-DD'),
+        'datetime_local.lte': moment().local().startOf('day').add(window.settings.enddate + 1, 'days').format('YYYY-MM-DD'),
+        per_page: 500,
     }
     if(window.coordinates){
         params['lat'] = window.coordinates.latitude;
@@ -251,8 +251,9 @@ function get_events(){
                         }).fadeTo(500, 1);
                     }
                     params.range = parseFloat(params.range.slice(0,-2)) + 2 + 'mi';
-                    params['datetime_utc.lte'] = moment(params['datetime_utc.lte']).add(2, 'days').format('YYYY-MM-DD'),
+                    //params['datetime_local.lte'] = moment(params['datetime_local.lte']).add(1, 'days').format('YYYY-MM-DD'),
                     this.url = base_url + $.param(params);
+                    console.log(url);
                     console.log(response);
                     $.ajax(this);
                 }else{
@@ -297,8 +298,7 @@ function parse_events(events){
                     window.artists[performer.id] = performer
                     promises.push(
                         $.ajax({
-                            url: soundcloud_url(performer.name),
-                            context: document.body,
+                            url: soundcloud_url(performer.name, 3),
                             beforeSend: function() {
                                 if(!$('#loader').is(':visible')){
                                     $('#loader').openModal({
@@ -335,12 +335,12 @@ function parse_events(events){
     });
 }
 
-function soundcloud_url(artist){
+function soundcloud_url(artist, limit){
     var base_url = '//api.soundcloud.com/tracks';
     var params = {
         'client_id': 'f1686e09dcc2a404eccb6f8473803687',
         'order': 'hotness',
-        'limit': 3,
+        'limit': limit,
         'q': artist,
         'username': artist,
     }
@@ -378,7 +378,7 @@ function parse_tracks(tracks, event_id, artist_id){
 }
 
 function load_tracks(track_list){
-    var track_limit = 300;
+    var track_limit = 100;
     if(isMobile()){
         var track_limit = 25;
     }
@@ -407,13 +407,13 @@ function load_tracks(track_list){
         return false;
     });
     if(track_limit < track_list.length){
-        var more = $('<a>').attr('class', 'collection-item dismissable center').text('Load more');
+        var more = $('<a>').attr({'class': 'collection-item center', href: ''}).text('Load more');
         $('#playlist').append(more);
         more.on('tap click', function(e){
             e.preventDefault();
             $(this).off();
             load_tracks(track_list.slice(track_limit));
-            more.slideUp('slow').slideUp('slow', 'linear');
+            more.slideUp('medium');
         });
     }
     if(!isMobile() && document.querySelector('#autoplay').checked && audio.paused){
@@ -683,8 +683,8 @@ function set_event_info(event_id){
     }
     maps_url = maps_url + $.param(params);
     $('#event-venue').clearQueue().stop().fadeTo('medium', 0.1, function() {
-        $(this).find('a').text('@ ' + event.venue.name);
-        $(this).find('a').attr('href', maps_url);
+        $(this).html('@ ');
+        $(this).append($('<a>').text(event.venue.name).attr({'href': maps_url, 'target': '_blank'}));
     }).fadeTo('medium', 1);
     // Date
     var time = '';
@@ -698,12 +698,15 @@ function set_event_info(event_id){
         'dates': moment(event.datetime_local).format('YYYYMMDDTHHmmss') +'/'+ moment(event.datetime_local).format('YYYYMMDDTHHmmss'),
         'location': event.venue.name,
         //TODO
-        'details': 'bandwagon.pl',
+        'details': 'Lineup:\n',
         'trp': false,
         'sprop': [
             'name:Band Wagon',
             'website:bandwagon.pl',
         ],
+    }
+    for(var i=0;i<event.performers.length;i++){
+        params.details += event.performers[i].name + '\n';
     }
     calendar_url = calendar_url + $.param(params, true);
     $('#event-date').clearQueue().stop().fadeTo('medium', 0.1, function() {
@@ -773,7 +776,7 @@ function echonest_artist_info(artist_id){
         timeout: 10000,
         success : function(data) {
             var artist_profile = data.response.artist;
-            console.log(artist_profile);
+            //console.log(artist_profile);
             var body = $('.artist-item[data-artist-id="' + artist_id  + '"] .collapsible-body');
             if(typeof artist_profile === "undefined"){
                 body.append($('<p>').text('Unknown artist'));
@@ -866,4 +869,17 @@ function active_pane(pane){
     if(pane.attr('id') == 'playlist-pane'){
        $('#show-playlist').fadeTo('slow', 0);
     }
+}
+
+function play_artist(artist_id, event_id){
+    var artist = artists[artist_id];
+    $.ajax({
+        url: soundcloud_url(artist.name, 15),
+        success: function(response){
+            $('#playlist').empty();
+            window.tracks = {};
+            parse_tracks(response, event_id, artist_id);
+            load_tracks(create_track_list());
+        }
+    })
 }
