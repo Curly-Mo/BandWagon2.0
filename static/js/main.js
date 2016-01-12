@@ -494,13 +494,16 @@ function refresh_playlist() {
         var success = function(position) {
             window.coordinates = position.coords;
             console.log(window.coordinates);
+            window.tracks = {};
             get_events();
         };
         var error = function(position) {
+            window.tracks = {};
             get_events();
         };
         navigator.geolocation.getCurrentPosition(success, error, {maximumAge:60*60*1000, timeout:8000, enableHighAccuracy: false});
     }else{
+        window.tracks = {};
         get_events();
     }
 }
