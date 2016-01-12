@@ -625,6 +625,7 @@ function init_settings(){
     });
 
     $('.drag-target').on('click touchstart', update_settings);
+    $('body').on('click touchstart', '#sidenav-overlay', update_settings);
     load_settings();
 }
 
