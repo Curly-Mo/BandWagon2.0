@@ -97,12 +97,12 @@ function play_toggle(){
         }else{
             audio.play();
         }
-        e.stop().fadeTo('fast', 0.1, function() {
+        e.stop().stop(true, true).fadeTo('fast', 0.1, function() {
             e.html('pause');
         }).fadeTo('fast', 1);
     }else{
         audio.pause();
-        e.stop().fadeTo('fast', 0.1, function() {
+        e.stop().stop(true, true).fadeTo('fast', 0.1, function() {
             e.html('play_arrow');
         }).fadeTo('fast', 1);
     }
