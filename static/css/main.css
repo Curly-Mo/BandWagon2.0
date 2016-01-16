@@ -17,7 +17,6 @@ body {
 }
 header {
     flex-shrink: 0;
-    z-index: 9999;
 }
 main{
     flex-grow: 1;
@@ -228,6 +227,21 @@ nav a.button-collapse span  {
     background-color: #000000;
 }
 
+#track-actions {
+    display: none;
+    border-bottom: 1px solid #393944;
+    background-color: #202223;
+    text-align: right;
+}
+#track-actions .btn {
+    background-color: #202223;
+}
+#track-actions .btn:hover {
+    background-color: #14181B;
+}
+.playlist-item.active {
+    border-bottom: none;
+}
 
 .row {
     margin: auto;
@@ -433,4 +447,25 @@ nav a.button-collapse span  {
 }
 #logo-attribution > * {
     margin: 0 4px;
+}
+
+.modal {
+    background-color: #202223;
+}
+.modal .modal-footer {
+    background-color: #202223;
+}
+
+.chip {
+    margin: 3px;
+}
+
+.action-toast {
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+.toast .btn {
+    padding: 0 1rem;
+    background-color: inherit;
 }

@@ -14,7 +14,7 @@ function init(){
     $('.button-collapse').sideNav({
         menuWidth: 300, // Default is 240
         edge: 'left', // Choose the horizontal origin
-        closeOnClick: true // Closes side-nav on <a> clicks, useful for Angular/Meteor
+        //closeOnClick: true // Closes side-nav on <a> clicks, useful for Angular/Meteor
     });
 
     $('#play-button').on('tap click', play_toggle);
@@ -25,11 +25,13 @@ function init(){
     init_volume();
     init_audio();
     init_progress();
+    init_track_actions();
     document.addEventListener('keydown', keydown, false)
     $('#show-playlist').on('tap click', function(){
         active_pane($('#playlist-pane'));
     });
 
+    $('.modal-trigger').leanModal();
 }
 
 var audioCtx;
@@ -107,19 +109,17 @@ function play_toggle(){
 }
 
 function next(){
-    var curr = document.querySelector('.playlist-item.active')
-    if(!curr){
+    var curr = $('.playlist-item.active');
+    if(curr.length == 0){
         $('.playlist-item').first().trigger('click');
     }else{
-        var next = curr.nextElementSibling;
-        next.click();
+        curr.nextAll('.playlist-item:first').click();
     }
 }
 
 function prev(){
-    var curr = document.querySelector('.playlist-item.active')
-    var prev = curr.previousElementSibling;
-    prev.click();
+    var curr = $('.playlist-item.active')
+    curr.prevAll('.playlist-item:first').click();
 }
 
 function init_volume(){
@@ -226,7 +226,7 @@ function get_events(){
     if(!$('#loader').is(':visible')){
         $('#loader').openModal({
             opacity: 0.8,
-            dismissible: false,
+            dismissible: true,
         });
     }
     $('#loading-message').text('Finding concerts...').fadeIn(200);;
@@ -250,7 +250,7 @@ function get_events(){
                             $(this).text('Increasing search radius...');
                         }).fadeTo(500, 1);
                     }
-                    params.range = parseFloat(params.range.slice(0,-2)) + 2 + 'mi';
+                    params.range = parseFloat(params.range.slice(0,-2)) + 1 + 'mi';
                     //params['datetime_local.lte'] = moment(params['datetime_local.lte']).add(1, 'days').format('YYYY-MM-DD'),
                     this.url = base_url + $.param(params);
                     console.log(url);
@@ -259,7 +259,7 @@ function get_events(){
                 }else{
                     $('#loader').html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
                         +   "No concerts found in: " + response.meta.geolocation.display_name +"<br>"
-                        +   "Is this not where you are? Try enabling improved location accuracy in Settings."
+                        +   "Is this not where you are? Try enabling improved location accuracy in <i class='mdi-navigation-menu'></i>Settings."
                     );
                 }
             }
@@ -288,6 +288,7 @@ function shuffle(o){
 function parse_events(events){
     var max_events = 50;
     events = shuffle(events);
+    events = apply_event_preferences(events);
     for(var i = 0; i < Math.min(events.length, max_events); i++) {
         (function (i) {
             var event = events[i];
@@ -425,6 +426,7 @@ function load_tracks(track_list){
 function create_track_list(){
     var arr = Object.keys(window.tracks).map(function (key) {return window.tracks[key]});
     arr = shuffle(arr);
+    arr = apply_track_preferences(arr);
     return arr;
 }
 
@@ -435,10 +437,14 @@ function play_item(){
     $('.playlist-item.active').removeClass('active');
     play_track(this.getAttribute('data-id'));
     this.classList.add('active');
+    $('#track-actions').stop(true, true).hide();//.slideUp(300);
     // Scroll to top
+    var self = this;
     $(this).parent().parent().clearQueue().stop().animate({
-        scrollTop: $(this).offset().top - $(this).parent().offset().top
-    }, 1000);
+        scrollTop: $(this).offset().top - $(this).parent().offset().top,// - $('#track-actions')[0].scrollHeight
+    }, 600, function(){
+        show_track_actions.call(self);
+    });
     if($(this).parent().children().last().text() == 'Load more' && $(this).parent().children().length - $(this).parent().children().index(this) < 5){
         $(this).parent().children().last().trigger('click');
     }
@@ -465,6 +471,9 @@ function play_track(track_id){
 }
 
 function keydown(e){
+    if ($(e.target).is('input, textarea')) {
+        return;   
+    }
     switch (e.keyCode) {
         case 38: //up
             break;
@@ -630,6 +639,10 @@ function init_settings(){
     $('.drag-target').on('click touchstart', update_settings);
     $('body').on('click touchstart', '#sidenav-overlay', update_settings);
     load_settings();
+    $('#show-likes, #show-dislikes').on('click', function(){
+        load_preferences();
+    });
+    $('#add_liked_artist, #add_liked_genre, #add_disliked_artist, #add_disliked_genre').on('keydown', add_pref);
 }
 
 function load_settings(){
@@ -886,4 +899,204 @@ function play_artist(artist_id, event_id){
             load_tracks(create_track_list());
         }
     })
+}
+
+function init_track_actions(){
+    $('body').on('click', '#thumb_up', function(){
+        var track_id = $(this).parent().prev().attr('data-id');
+        var track = tracks[track_id];
+        var liked_artists = JSON.parse(localStorage.getItem('liked_artists')) || {};
+        var liked_genres = JSON.parse(localStorage.getItem('liked_genres')) || {};
+        var name = artists[track.artist_id].name;
+        if(!(name.toLowerCase in liked_artists)){
+            liked_artists[name.toLowerCase()] = name;
+            localStorage.setItem('liked_artists', JSON.stringify(liked_artists));
+            var action = "delete_pref('liked_artists', '" + name.toLowerCase()+"');" + 'this.parentNode.remove()';
+            console.log(action);
+            Materialize.toast('Liked artist: ' + name + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
+        }
+        if(track.genre && !(track.genre in liked_genres)){
+            liked_genres[track.genre.toLowerCase()] = track.genre;
+            localStorage.setItem('liked_genres', JSON.stringify(liked_genres));
+            var action = "delete_pref('liked_genres', '" + track.genre.toLowerCase()+"');" + 'this.parentNode.remove()';
+            Materialize.toast('Liked genre: ' + track.genre + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
+        }
+        $(this).parent().slideUp(400);
+    });
+    $('body').on('click', '#thumb_down', function(){
+        var track_id = $(this).parent().prev().attr('data-id');
+        var track = tracks[track_id];
+        var disliked_artists = JSON.parse(localStorage.getItem('disliked_artists')) || {};
+        var disliked_genres = JSON.parse(localStorage.getItem('disliked_genres')) || {};
+        var name = artists[track.artist_id].name;
+        if(!(name.toLowerCase() in disliked_artists)){
+            disliked_artists[name.toLowerCase()] = name;
+            localStorage.setItem('disliked_artists', JSON.stringify(disliked_artists));
+            var action = "delete_pref('disliked_artists', '" + name.toLowerCase()+"');" + 'this.parentNode.remove()';
+            Materialize.toast('Disliked artist: ' + name + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
+        }
+        if(track.genre && !(track.genre.toLowerCase in disliked_genres)){
+            disliked_genres[track.genre.toLowerCase()] = track.genre;
+            localStorage.setItem('disliked_genres', JSON.stringify(disliked_genres));
+            var action = "delete_pref('disliked_genres', '" + track.genre.toLowerCase()+"');" + 'this.parentNode.remove()';
+            Materialize.toast('Disliked genre: ' + track.genre + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
+        }
+        $(this).parent().slideUp(400);
+    });
+}
+
+function show_track_actions(){
+    var active = $(this);
+    console.log(tracks[active.attr('data-id')].genre);
+    var track_actions = $('#track-actions');
+    if(track_actions.length == 0){
+        track_actions = $('<li>').attr('id', 'track-actions')
+            .append($('<a>', {
+                    'id': 'thumb_up',
+                    'class': 'waves-effect waves-light btn',
+                }).append($('<i>', {
+                    'class': 'material-icons',
+                    'text': 'thumb_up',
+                })))
+            .append($('<a>', {
+                    'id': 'thumb_down',
+                    'class': 'waves-effect waves-light btn',
+                }).append($('<i>', {
+                    'class': 'material-icons',
+                    'text': 'thumb_down',
+                })));
+    }
+    var pref_types = [
+        'liked_artists',
+        'liked_genres',
+        'disliked_artists',
+        'disliked_genres',
+    ];
+    var preferences = {};
+    for(var i = 0; i < pref_types.length; i++){
+        var pref = JSON.parse(localStorage.getItem(pref_types[i])) || {};
+        preferences = jQuery.extend(preferences, pref);
+    }
+    var track = tracks[active.attr('data-id')];
+    if(!(track.genre && track.genre.toLowerCase() in preferences || artists[track.artist_id].name.toLowerCase() in preferences)){
+        track_actions.insertAfter(active).stop(true, true).slideDown(600);
+    }
+}
+
+function load_preferences(){
+    var preferences = [
+        'liked_artists',
+        'liked_genres',
+        'disliked_artists',
+        'disliked_genres',
+    ];
+    for(var i = 0; i < preferences.length; i++){
+        var pref = JSON.parse(localStorage.getItem(preferences[i])) || {};
+        var el = $('#'+preferences[i]);
+        el.empty();
+        var keys = Object.keys(pref).sort();
+        for(var k = 0; k < keys.length; k++){
+            var close = $('<i>', {
+                'class': 'material-icons',
+                'text': 'close',
+            });
+            el.append(
+                $('<div>', {
+                    'class': 'chip',
+                    'text': pref[keys[k]],
+                }).append(close)
+            );
+            close.on('click', remove_pref);
+        }
+    }
+}
+
+function remove_pref(){
+    var pref = this.parentNode.childNodes[0].nodeValue;
+    var pref_type = $(this).parent().parent().attr('id');
+    var preferences = JSON.parse(localStorage.getItem(pref_type)) || {};
+    delete preferences[pref.toLowerCase()]
+    localStorage.setItem(pref_type, JSON.stringify(preferences));
+}
+
+function add_pref(event){
+    if (event.keyCode == 13) {
+        var pref_type = this.parentNode.previousElementSibling.id;
+        var preferences = JSON.parse(localStorage.getItem(pref_type)) || {};
+        if(this.value != ''){
+            preferences[this.value.toLowerCase()] = this.value;
+            localStorage.setItem(pref_type, JSON.stringify(preferences));
+            load_preferences();
+            this.value = '';
+        }
+    }
+}
+
+function delete_pref(pref_type, pref){
+    var preferences = JSON.parse(localStorage.getItem(pref_type)) || {};
+    delete preferences[pref.toLowerCase()]
+    localStorage.setItem(pref_type, JSON.stringify(preferences));
+    console.log(this);
+}
+
+function apply_event_preferences(events){
+    var liked_artists = JSON.parse(localStorage.getItem('liked_artists')) || {};
+    var disliked_artists = JSON.parse(localStorage.getItem('disliked_artists')) || {};
+    if(Object.keys(liked_artists).length > 0 || Object.keys(disliked_artists).length > 0){
+        for(var i = 0; i < events.length; i++){
+            var event = events[i];
+            var performers = jQuery.map(event.performers, function(performer) { return performer.name; });
+            // Move liked artist events to the front of the list
+            if(performers.some(function(v) { return v.toLowerCase() in liked_artists; })){
+                events.splice(i, 1);
+                events.unshift(event);
+                console.log('Moving to front:');
+                console.log(event);
+            // Remove disliked artist events
+            }else if(performers.some(function(v) { return v.toLowerCase() in disliked_artists; })){
+                events.splice(i, 1);
+                i--;
+                console.log('Removing event:');
+                console.log(event);
+            }
+        }
+    }
+    return events;
+}
+
+function apply_track_preferences(tracks){
+    var liked_artists = JSON.parse(localStorage.getItem('liked_artists')) || {};
+    var liked_genres = JSON.parse(localStorage.getItem('liked_genres')) || {};
+    var disliked_genres = JSON.parse(localStorage.getItem('disliked_genres')) || {};
+    if(Object.keys(liked_artists).length > 0 || Object.keys(liked_genres).length > 0 || Object.keys(disliked_genres).length > 0){
+        for(var i = 0; i < tracks.length; i++){
+            var track = tracks[i];
+            // Move liked artists close to the top of playlist
+            if(artists[track.artist_id].name.toLowerCase() in liked_artists){
+                tracks.splice(i, 1);
+                tracks.splice(rand_int(0, 8), 0, track); 
+                delete liked_artists[artists[track.artist_id].name.toLowerCase()];
+                console.log('Prioritizing track:');
+                console.log(track);
+            // Move liked genres close to the top of playlist
+            }else if(track.genre && track.genre.toLowerCase() in liked_genres){
+                tracks.splice(i, 1);
+                tracks.splice(rand_int(0, 8), 0, track); 
+                delete liked_genres[track.genre.toLowerCase()];
+                console.log('Prioritizing track:');
+                console.log(track);
+            // Remove tracks of disliked genres
+            }else if(track.genre && track.genre.toLowerCase() in disliked_genres){
+                tracks.splice(i, 1);
+                i--;
+                console.log('Removing track:');
+                console.log(track);
+            }
+        }
+    }
+    return tracks;
+}
+
+function rand_int(min, max){
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 }
