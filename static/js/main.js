@@ -204,7 +204,6 @@ function init_progress(){
 
 function get_events(){
     var base_url = '//api.seatgeek.com/2/events?';
-    var daterange = $('#daterange').val().split(' to ');
     var params = {
         aid: 11799,
         client_id: 'NDA0ODEwNnwxNDUxNTIwNTY1',
@@ -286,7 +285,7 @@ function shuffle(o){
 }
 
 function parse_events(events){
-    var max_events = 50;
+    var max_events = 70;
     events = shuffle(events);
     events = apply_event_preferences(events);
     for(var i = 0; i < Math.min(events.length, max_events); i++) {
@@ -592,17 +591,46 @@ function init_settings(){
         container: 'main',
         closeOnSelect: true,
     });*/
-    var datepicker = $('#daterange').dateRangePicker({
+    var datepicker = $('#datestart').dateRangePicker({
         separator : ' to ',
         format: 'YYYY-MM-DD',
         autoClose: true,
         container:'main',
         showTopbar: false,
         startDate: moment().local().format(),
-        setValue: function(s){
+        setValue: function(s,s1,s2){
             if(!$(this).is(':disabled') && s != $(this).val()){
-                $(this).val(s);
+                $('#datestart').val(s1);
+                $('#dateend').val(s2);
             }
+        },
+        getValue: function()
+        {
+            if ($('#datestart').val() && $('#dateend').val())
+                return $('#datestart').val() + ' to ' + $('#dateend').val();
+            else
+                return '';
+        },
+    });
+    var datepicker = $('#dateend').dateRangePicker({
+        separator : ' to ',
+        format: 'YYYY-MM-DD',
+        autoClose: true,
+        container:'main',
+        showTopbar: false,
+        startDate: moment().local().format(),
+        setValue: function(s,s1,s2){
+            if(!$(this).is(':disabled') && s != $(this).val()){
+                $('#datestart').val(s1);
+                $('#dateend').val(s2);
+            }
+        },
+        getValue: function()
+        {
+            if ($('#datestart').val() && $('#dateend').val())
+                return $('#datestart').val() + ' to ' + $('#dateend').val();
+            else
+                return '';
         },
     });
 
@@ -650,7 +678,7 @@ function load_settings(){
     if(new_settings){
         window.settings = JSON.parse(new_settings);
     }
-    $('#daterange').data('dateRangePicker').setDateRange(
+    $('#datestart').data('dateRangePicker').setDateRange(
         moment().local().startOf('day').add(window.settings.startdate, 'days').format(),
         moment().local().startOf('day').add(window.settings.enddate, 'days').format()
     );
@@ -660,12 +688,11 @@ function load_settings(){
 }
 
 function update_settings(){
-    var daterange = $('#daterange').val().split(' to ');
     var new_settings = {
         'autoplay': document.querySelector('#autoplay').checked,
         'geolocation': document.querySelector('#geolocation').checked,
-        'startdate': moment(daterange[0]).local().startOf('day').diff(moment().local().startOf('day'), 'days'),
-        'enddate': moment(daterange[1]).local().startOf('day').diff(moment().local().startOf('day'), 'days'),
+        'startdate': moment($('#datestart').val()).local().startOf('day').diff(moment().local().startOf('day'), 'days'),
+        'enddate': moment($('#dateend').val()).local().startOf('day').diff(moment().local().startOf('day'), 'days'),
         'distance': document.querySelector('#distance').noUiSlider.get(),
     }
     if(JSON.stringify(window.settings) !== JSON.stringify(new_settings)){

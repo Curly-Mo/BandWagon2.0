@@ -37,7 +37,7 @@ nav {
     background-color: #14181B;
     color: #ebebec;   
     line-height: 20px;
-    overflow-y: inherit;
+    overflow: scroll;
 }
 .side-nav input {
     cursor: pointer;
@@ -48,6 +48,11 @@ nav {
     color: #9e9e9e;
     padding: 10px;
 }
+.side-nav-close {
+    margin-top: 50px;
+    margin-bottom: 64px;
+}
+
 .date-picker-wrapper {
     z-index: 9999;
 }
@@ -86,6 +91,20 @@ nav a.button-collapse span  {
     font-size: 1.3rem;
     text-transform: none;
     float: right;
+}
+
+
+nav .brand-logo.center {
+    -webkit-transform: translateX(-41%);
+    transform: translateX(-41%);
+}
+.brand-title{
+    font-family: "Karma";
+}
+.brand-tagline {
+    font-size: 50%;
+    -webkit-transform: translate(100px, 7%);
+    transform: translate(100px, 7%);
 }
 
 #volume-slider {
@@ -468,4 +487,8 @@ nav a.button-collapse span  {
 .toast .btn {
     padding: 0 1rem;
     background-color: inherit;
+}
+
+.side-nav .datepicker {
+    width: 46%;
 }
