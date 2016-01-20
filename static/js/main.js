@@ -234,6 +234,8 @@ function get_events(){
         tryCount : 0,
         retryLimit : 1,
         timeout: 20000,
+        dataType: 'jsonp',
+        cache: true,
         complete: function(){
             //$('#loader').closeModal();
         },
@@ -299,6 +301,8 @@ function parse_events(events){
                     promises.push(
                         $.ajax({
                             url: soundcloud_url(performer.name, 3),
+                            dataType: 'json',
+                            cache: true,
                             beforeSend: function() {
                                 if(!$('#loader').is(':visible')){
                                     $('#loader').openModal({
@@ -818,6 +822,8 @@ function echonest_artist_info(artist_id){
         tryCount : 0,
         retryLimit : 1,
         timeout: 10000,
+        dataType: 'json',
+        cache: true,
         success : function(data) {
             var artist_profile = data.response.artist;
             //console.log(artist_profile);
@@ -919,6 +925,8 @@ function play_artist(artist_id, event_id){
     var artist = artists[artist_id];
     $.ajax({
         url: soundcloud_url(artist.name, 15),
+        dataType: 'jsonp',
+        cache: true,
         success: function(response){
             $('#playlist').empty();
             window.tracks = {};
