@@ -67,6 +67,7 @@ function init_audio(){
         });
     }
     audio.addEventListener('ended', next);
+    $('body').append(audio);
 }
 
 function play(){
@@ -353,7 +354,7 @@ function soundcloud_url(artist, limit){
     return url
 }
 
-function stream_url(track_id){
+function soundcloud_stream_url(track_id){
     var base_url = tracks[track_id].stream_url;
     var params = {
         'client_id': 'f1686e09dcc2a404eccb6f8473803687',
@@ -454,7 +455,9 @@ function play_item(){
 }
 
 function play_track(track_id){
-    audio.src = stream_url(track_id)
+    //audio.pause();
+    //audio.removeAttribute("src"); 
+    audio.src = soundcloud_stream_url(track_id)
     play();
     document.querySelector('#waveform').setAttribute('src', tracks[track_id].waveform_url);
     var track = tracks[track_id];
@@ -465,11 +468,12 @@ function play_track(track_id){
     }).fadeTo(1000,1);
     set_event_info(track.event_id);
     try{
-        ga('send', 'event', 'audio', 'play', {
-            eventLabel: window.artists[track.artist_id].name,
-            eventValue: track.title,
-        });
+        ga('send', 'event', 'play',
+            window.artists[track.artist_id].name,
+            track.title
+        );
     }catch(e){
+        console.log(e);
     }
 }
 
@@ -947,7 +951,6 @@ function init_track_actions(){
             liked_artists[name.toLowerCase()] = name;
             localStorage.setItem('liked_artists', JSON.stringify(liked_artists));
             var action = "delete_pref('liked_artists', '" + name.toLowerCase()+"');" + 'this.parentNode.remove()';
-            console.log(action);
             Materialize.toast('Liked artist: ' + name + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
         }
         if(track.genre && !(track.genre in liked_genres)){
@@ -957,6 +960,14 @@ function init_track_actions(){
             Materialize.toast('Liked genre: ' + track.genre + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
         }
         $(this).parent().slideUp(400);
+        try{
+            ga('send', 'event', 'thumb_up',
+                name,
+                track.genre
+            );
+        }catch(e){
+            console.log(e);
+        }
     });
     $('body').on('click', '#thumb_down', function(){
         var track_id = $(this).parent().prev().attr('data-id');
@@ -977,6 +988,14 @@ function init_track_actions(){
             Materialize.toast('Disliked genre: ' + track.genre + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
         }
         $(this).parent().slideUp(400);
+        try{
+            ga('send', 'event', 'thumb_down',
+                name,
+                track.genre
+            );
+        }catch(e){
+            console.log(e);
+        }
     });
 }
 
@@ -1134,4 +1153,30 @@ function apply_track_preferences(tracks){
 
 function rand_int(min, max){
     return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function echonest_analyze(track_id){
+    var stream_url = soundcloud_stream_url(track_id);
+    var apiKey = "8C0DI9VHHE8BZSPOP";
+    var echonest_url = 'http://developer.echonest.com/api/v4/track/upload?';
+    var params = {
+        'api_key': apiKey,
+        'url': stream_url,
+        'format': 'json',
+    }
+    var url = echonest_url + $.param(params, true);
+    console.log(url)
+    $.ajax({
+        url: url,
+        timeout: 10000,
+        method: 'POST',
+        crossDomain: true,
+        dataType: 'json',
+        contentType: 'application/x-www-form-urlencoded',
+        cache: true,
+        success : function(data) {
+            var response = data.response;
+            console.log(response);
+        },
+    });
 }
