@@ -788,10 +788,67 @@ function set_event_info(event_id){
             if($('.playlist-item.active').length && artist.id == tracks[$('.playlist-item.active').attr('data-id')].artist_id){
                 el.children().first().addClass('active');
             }
-            echonest_artist_info(artist.id);
+            lastfm_artist_info(artist.id);
+            //echonest_artist_info(artist.id);
         }
         $(this).collapsible();
     }).fadeTo('medium', 1);
+}
+
+function lastfm_artist_info(artist_id){
+    var apiKey = "812ddaf7105675342e456ebf4eab4e92";
+    //var id = "jambase:artist:"+artistID;
+    var lastfm_url = 'http://ws.audioscrobbler.com/2.0/?';
+    var params = {
+        'api_key': apiKey,
+        'method': 'artist.getinfo',
+        'artist': artists[artist_id].name,
+        'format': 'json',
+    }
+    var url = lastfm_url  + $.param(params, true);
+    //console.log(url)
+    $.ajax({
+        url: url,
+        tryCount : 0,
+        retryLimit : 1,
+        timeout: 10000,
+        dataType: 'json',
+        cache: true,
+        success : function(data) {
+            var artist_profile = data.artist;
+            //console.log(artist_profile);
+            var body = $('.artist-item[data-artist-id="' + artist_id  + '"] .collapsible-body');
+            if(typeof artist_profile === "undefined"){
+                body.append($('<p>').text('Unknown artist'));
+                return;
+            }
+            if(typeof artist_profile.bio.content !== "undefined" && artist_profile.bio.content !== ""){
+                body.append($('<label>').text('Bio:'))
+                    .append($('<p>').html(lastfm_bio(artist_profile.bio)));
+            }
+            if(typeof artist_profile.tags.tag[0] !== "undefined"){
+                var terms = artist_profile.tags.tag.map(function(term) {return term.name;}).join(', ');
+                body.append($('<label>').text('Genre:'))
+                    .append($('<p>').text(terms));
+            }
+            if(typeof artist_profile.similar.artist[0] !== "undefined"){
+                var similar = artist_profile.similar.artist.slice(0,5).map(function(a) {return a.name;}).join(', ');
+                body.append($('<label>').text('Similar Artists:'))
+                    .append($('<p>').text(similar));
+            }
+            if(typeof artist_profile.image[0]['#text'] != null){
+                var slider = $('<div>').addClass('center').css({'width': '85%', 'height': '300px'});
+                var image = $('<img>').css({'max-width': '100%', 'max-height': '100%'});
+                for(var i = 0; i < artist_profile.image.length; i++) {
+                    image.attr('src', artist_profile.image[i]['#text']);
+                    if(artist_profile.image[i].size == 'mega'){
+                        break;
+                    }
+                }
+                body.append(slider.append(image));
+            }
+        }
+    });
 }
 
 function echonest_artist_info(artist_id){
@@ -887,6 +944,16 @@ function echonest_artist_info(artist_id){
             //}
         }
     });
+}
+
+function lastfm_bio(bio) {
+    var text = bio.content;
+    if(text.length > 600){
+        var end_index = 600 + text.substring(600).indexOf('.') + 1;
+        text = text.substring(0, end_index);
+        text += " <a target='_blank' href='" + bio.links.link.href + "'>Read More</a>";
+    }
+    return text;
 }
 
 function best_bio(bios) {
