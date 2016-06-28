@@ -44,11 +44,13 @@ var tracks = {};
 var promises = [];
 var coords;
 var settings = {
-    'autoplay': true,
+    'autoplay': false,
     'geolocation': false,
     'startdate': 0,
     'enddate': moment().local().startOf('day').add(1, 'months').diff(moment().local().startOf('day'), 'days'),
     'distance': '20mi',
+    'custom_location_enable': false,
+    'custom_location': '',
 }
 
 function init_audio(){
@@ -208,14 +210,39 @@ function get_events(){
     var params = {
         aid: 11799,
         client_id: 'NDA0ODEwNnwxNDUxNTIwNTY1',
-        geoip: true,
         range: window.settings.distance || "20mi",
         'taxonomies.name': 'concert',
         'datetime_local.gte': moment().local().startOf('day').add(window.settings.startdate, 'days').format('YYYY-MM-DD'),
         'datetime_local.lte': moment().local().startOf('day').add(window.settings.enddate + 1, 'days').format('YYYY-MM-DD'),
         per_page: 500,
     }
-    if(window.coordinates){
+    if(!$('#loader').is(':visible')){
+        $('#loader').openModal({
+            opacity: 0.8,
+            dismissible: true,
+        });
+    }
+    if(window.settings.custom_location_enable && window.settings.custom_location != ''){
+        $('#loading-message').text('Confirming Custom Location...').fadeIn(200);
+        var geo = geo_from_address(window.settings.custom_location);
+        if(geo == null){
+            $('#loader > .preloader-wrapper').hide();
+            $('#loading-message').html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
+                +   "I don't recognize '" + window.settings.custom_location +"'<br>"
+                +   "Please try typing a different location."
+            );
+            setTimeout(function(){
+                $('.button-collapse').sideNav('show');
+                $('#loader').closeModal({out_duration: 0});
+                $('#loader > .preloader-wrapper').show();
+                $('#custom_location').select();
+            }, 4000);
+            return;
+        }else{
+            params['lat'] = geo.latitude;
+            params['lon'] = geo.longitude;
+        }
+    }else if(window.coordinates){
         params['lat'] = window.coordinates.latitude;
         params['lon'] = window.coordinates.longitude;
     }else{
@@ -223,13 +250,7 @@ function get_events(){
     }
     var url = base_url + $.param(params);
     //console.log(url)
-    if(!$('#loader').is(':visible')){
-        $('#loader').openModal({
-            opacity: 0.8,
-            dismissible: true,
-        });
-    }
-    $('#loading-message').text('Finding concerts...').fadeIn(200);;
+    $('#loading-message').text('Finding concerts...').fadeIn(200);
     $.ajax({
         url: url,
         tryCount : 0,
@@ -244,6 +265,7 @@ function get_events(){
             if(response.events.length > 0) {
                 //$('#loader').closeModal({out_duration: 0});
                 parse_events(response.events);
+                $('#custom_location').attr("placeholder", response.meta.geolocation.display_name);
             }else{
                 this.tryCount++;
                 if(this.tryCount <= 10){
@@ -405,7 +427,9 @@ function load_tracks(track_list){
         play_item.call(this);
     });
     $('.playlist-item .secondary-content').on('tap click', function(e) {
-        set_event_info(window.tracks[$(e.target).parents('[data-id]').attr('data-id')].event_id);
+        var track = window.tracks[$(e.target).parents('[data-id]').attr('data-id')];
+        //console.log(track);
+        set_event_info(track.event_id, track.id);
         if(window.matchMedia('(max-width: 600px)').matches){
             active_pane($('#event-pane'));
         }
@@ -423,6 +447,9 @@ function load_tracks(track_list){
     }
     if(!isMobile() && document.querySelector('#autoplay').checked && audio.paused){
         $('.playlist-item').first().trigger('click');
+    }else if($('#play').html() != 'pause'){
+        var track = window.tracks[$('.playlist-item').first().attr('data-id')];
+        set_event_info(track.event_id, track.id);
     }
     init_dismissables();
 }
@@ -466,7 +493,7 @@ function play_track(track_id){
         $('#now-playing-artist').text(window.artists[track.artist_id].name);
         $('#now-playing-title').text(track.title);
     }).fadeTo(1000,1);
-    set_event_info(track.event_id);
+    set_event_info(track.event_id, track_id);
     try{
         ga('send', 'event', 'play',
             window.artists[track.artist_id].name,
@@ -509,7 +536,7 @@ function refresh_playlist() {
         $('#loading-message').text('Determining your location...').fadeIn(200);;
         var success = function(position) {
             window.coordinates = position.coords;
-            console.log(window.coordinates);
+            //console.log(window.coordinates);
             window.tracks = {};
             get_events();
         };
@@ -679,6 +706,13 @@ function init_settings(){
         load_preferences();
     });
     $('#add_liked_artist, #add_liked_genre, #add_disliked_artist, #add_disliked_genre').on('keydown', add_pref);
+    $('#custom_location').on('input', function(){
+        if(this.value == ''){
+            $('#custom_location_enable').prop('checked', false);
+        }else{
+            $('#custom_location_enable').prop('checked', true);
+        }
+    });
 }
 
 function load_settings(){
@@ -693,6 +727,9 @@ function load_settings(){
     document.querySelector('#distance').noUiSlider.set(window.settings.distance);
     document.querySelector('#autoplay').checked = window.settings.autoplay;
     document.querySelector('#geolocation').checked = window.settings.geolocation;
+
+    document.querySelector('#custom_location_enable').checked = window.settings.custom_location_enable;
+    document.querySelector('#custom_location').value = window.settings.custom_location;
 }
 
 function update_settings(){
@@ -702,6 +739,12 @@ function update_settings(){
         'startdate': moment($('#datestart').val()).local().startOf('day').diff(moment().local().startOf('day'), 'days'),
         'enddate': moment($('#dateend').val()).local().startOf('day').diff(moment().local().startOf('day'), 'days'),
         'distance': document.querySelector('#distance').noUiSlider.get(),
+        'custom_location_enable': document.querySelector('#custom_location_enable').checked,
+    }
+    if(document.querySelector('#custom_location_enable').checked){
+        new_settings['custom_location'] = document.querySelector('#custom_location').value;
+    }else{
+        new_settings['custom_location'] = '';
     }
     if(JSON.stringify(window.settings) !== JSON.stringify(new_settings)){
         window.settings = new_settings;
@@ -720,7 +763,11 @@ function formatSeconds(seconds){
     return timestring
 }
 
-function set_event_info(event_id){
+function set_event_info(event_id, track_id){
+    if(window.eventinfo == event_id){
+        return;
+    }
+    window.eventinfo = event_id;
     var event = events[event_id];
     // Title
     $('#event-title').clearQueue().stop().fadeTo('medium', 0.1, function() {
@@ -785,7 +832,7 @@ function set_event_info(event_id){
                     .append($('<div>').addClass('collapsible-header').text(artist.name))
                     .append($('<div>').addClass('collapsible-body'))
             $(this).append(el);
-            if($('.playlist-item.active').length && artist.id == tracks[$('.playlist-item.active').attr('data-id')].artist_id){
+            if(artist.id == tracks[track_id].artist_id){
                 el.children().first().addClass('active');
             }
             lastfm_artist_info(artist.id);
@@ -837,7 +884,7 @@ function lastfm_artist_info(artist_id){
                     .append($('<p>').text(similar));
             }
             if(typeof artist_profile.image[0]['#text'] != null){
-                var slider = $('<div>').addClass('center').css({'width': '85%', 'height': '300px'});
+                var slider = $('<div>').addClass('center').css({'width': '90%'});
                 var image = $('<img>').css({'max-width': '100%', 'max-height': '100%'});
                 for(var i = 0; i < artist_profile.image.length; i++) {
                     image.attr('src', artist_profile.image[i]['#text']);
@@ -1246,4 +1293,41 @@ function echonest_analyze(track_id){
             console.log(response);
         },
     });
+}
+
+function get_city(){
+    var url = '//www.geoplugin.net/json.gp?'
+    if(window.coordinates){
+        url += 'lat=' + window.coordinates.latitude + '&';
+        url += 'long=' + window.coordinates.longitude + '&';
+    }
+    url += 'jsoncallback=?';
+    console.log(url);
+    $.getJSON(url, 
+        function(data){
+            $('#custom_location').attr("placeholder", data.geoplugin_city +', ' + data.geoplugin_regionCode);
+        }
+    );
+}
+
+function geo_from_address(address){
+    var base_url = 'https://maps.googleapis.com/maps/api/geocode/json?';
+    var params = {
+        'key': 'AIzaSyAxT696F5cHCzGxozFpAD--kmLWiCGzByo',
+        'address': address,
+    }
+    var url = base_url + $.param(params);
+    var data = $.ajax({ 
+        url: url,
+        async: false,
+        dataType: 'json',
+    }).responseJSON;
+    if(data.results[0] == null){
+        return null;
+    }
+    var custom_geo = {
+        'latitude': data.results[0].geometry.location.lat,
+        'longitude': data.results[0].geometry.location.lng,
+    }
+    return custom_geo;
 }
