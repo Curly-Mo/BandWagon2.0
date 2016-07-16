@@ -1,12 +1,10 @@
 <header>
 <nav>
     <div class="nav-wrapper">
-        <a data-activates="settings" class="button-collapse hide-on-med-and-up waves-effect waves-light btn">
-            <i class="mdi-navigation-menu"></i>
+        <a data-activates="settings" class="left button-collapse hide-on-med-and-up waves-effect waves-light btn">
+						<i class="material-icons">menu</i>
         </a>
-        <a data-activates="settings" class="button-collapse left hide-on-small-and-down show-on-large waves-effect waves-light btn">
-            <i class="mdi-navigation-menu"><span >Settings</span></i>
-        </a>
+        <a data-activates="settings" class="left button-collapse left hide-on-small-and-down show-on-large waves-effect waves-light btn"><i class="material-icons">menu</i><span>Settings</span></a>
         <div class="side-nav" id="settings">
             {% include 'includes/settings.html' %}
         </div>
@@ -15,6 +13,15 @@
             <span class="brand-title">BandWagon</span>
             <span class="brand-tagline hide-on-small-and-down blue-grey-text text-lighten-3">Discover local concerts</span>
         </div>
+
+        <div class="right input-field z-depth-3 search-wrapper hide-on-med-and-down show-on-large">
+          <input id="search" type="search" placeholder="Search">
+          <i id="search-icon" class="material-icons">search</i>
+          </input>
+        </div>
+        <a id="search-button" class="right hide-on-large-only waves-effect waves-light btn">
+            <i class="material-icons">search</i>
+        </a>
 
         <!--
         <a data-activates="right-dropdown" class="dropdown-button right hide-on-med-and-up waves-effect waves-light btn">

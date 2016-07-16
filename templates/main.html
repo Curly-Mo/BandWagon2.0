@@ -1,8 +1,39 @@
 <main>
     <div class="pane left" id="playlist-pane">
         <ul class="collection z-depth-2" id="playlist"></ul>
+        <div id="loader">
+            <div class="preloader-wrapper big active">
+                <div class="spinner-layer spinner-blue-only">
+                    <div class="circle-clipper left">
+                        <div class="circle"></div>
+                    </div>
+                    <div class="gap-patch">
+                        <div class="circle"></div>
+                    </div>
+                    <div class="circle-clipper right">
+                        <div class="circle"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="loading-message"></div>
+        </div>
     </div>
-    <div class="pane right custom-hide-on-small" id="event-pane">
+    <div class="pane right hide-on-small-only" id="event-pane">
+        <div id="welcome">
+          <h4 class="center flow-text">Welcome to BandWagon!</h4>
+          <br>
+          <h4 class="center flow-text blue-grey-text text-lighten-2">Stream Music from bands with <span style="color: #20A2C7;">Upcoming Concerts</span></h4>
+          <br><br>
+          <h6 class="center flow-text" style="font-size: 1.3rem;">If you hear something you like, you can read more about them here.<br>You might consider going to their show!</h6>
+          <br><br><br>
+          <div class="center flow-tex">All these songs are from bands that will be performing live <span style="color: #20A2C7;">near you</span>.</div>
+          <div class="arrow"></div>
+          <br><br>
+          <div class="center">
+            <a id="start-listening" class="waves-effect waves-light btn" onclick="play_toggle();">Start Listening</a>
+          </div>
+        </div>
+
         <h4 id="event-title" class="center flow-text"></h4>
         <h5 id="event-venue" class="center flow-text blue-grey-text text-lighten-2"><a  class="" target="_blank"></a></h5>
         <div class="center blue-grey-text text-lighten-2">
@@ -29,23 +60,38 @@
             </a>
         </div>
     </div>
-
-    <div id="loader" class="modal">
-        <div class="preloader-wrapper big active">
-            <div class="spinner-layer spinner-blue-only">
-                <div class="circle-clipper left">
-                    <div class="circle"></div>
-                </div>
-                <div class="gap-patch">
-                    <div class="circle"></div>
-                </div>
-                <div class="circle-clipper right">
-                    <div class="circle"></div>
-                </div>
-            </div>
-        </div>
-        <div id="loading-message"></div>
+    <div class="pane right hide-on-small-only hide" id="artist-pane">
+        <h4 id="artist-title" class="center flow-text"></h4>
+        <div class="collection z-depth-2" id="artist-events"></div>
+        <div id="artist-info"></div>
     </div>
+    <div class="pane right hide-on-small-only hide" id="venue-pane">
+        <h4 id="venue-title" class="center flow-text"></h4>
+        <div id="venue-info" class="center"></div>
+        <div class="collection z-depth-2" id="venue-events"></div>
+    </div>
+    <div class="pane right hide-on-small-only hide" id="search-pane">
+        <div class="text-center">
+          <div class="preloader-wrapper big active" id="search-spinner">
+              <div class="spinner-layer spinner-blue-only">
+                  <div class="circle-clipper left">
+                      <div class="circle"></div>
+                  </div>
+                  <div class="gap-patch">
+                      <div class="circle"></div>
+                  </div>
+                  <div class="circle-clipper right">
+                      <div class="circle"></div>
+                  </div>
+              </div>
+          </div>
+          <div id="search-message"></div>
+        </div>
+        <div>
+          <div class="collection z-depth-2" id="search-results"></div>
+        </div>
+    </div>
+
 
 </main>
 

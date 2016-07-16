@@ -7,7 +7,7 @@ function init(){
     if(navigator.userAgent.toLowerCase().indexOf('msie ') > -1 ||
        navigator.userAgent.toLowerCase().indexOf('trident/') >-1 ||
        navigator.userAgent.toLowerCase().indexOf('edge/') > -1){
-        Materialize.toast("This page does not run well in Internet Exporer. Use Chrome or Safari for a better experience.", 5000)
+        Materialize.toast("This page does not run well in Internet Exporer. I recommend Chrome for the best experience.", 5000)
     }
 
     // Initialize collapse button
@@ -32,6 +32,9 @@ function init(){
     });
 
     $('.modal-trigger').leanModal();
+    init_search();
+    $('.arrow').slideDown();
+    $('#start-listening').fadeIn();
 }
 
 var audioCtx;
@@ -40,6 +43,7 @@ var audio_source;
 var gain_node;
 var events = {};
 var artists = {};
+var venues= {};
 var tracks = {};
 var promises = [];
 var coords;
@@ -93,10 +97,17 @@ function pause(){
 }
 
 function play_toggle(){
+    $('#start-listening').addClass('disabled');
+    $('#start-listening').removeClass('waves-effect');
+    $('#start-listening').attr('onclick', '');
     var e = $('#play');
     if(e.html() == 'play_arrow'){
         if(!document.querySelector('.playlist-item.active')){
-            $('.playlist-item').first().trigger('click');
+            if($('.playlist-item').length == 0){
+                window.settings.autoplay = true;
+            }else{
+                $('.playlist-item').first().trigger('click');
+            }
         }else{
             audio.play();
         }
@@ -205,23 +216,27 @@ function init_progress(){
     }
 }
 
+function clear_modal(){
+    // Refresh loading message
+    console.log('fixing modal');
+    $('#loader > .preloader-wrapper').show();
+}
+
 function get_events(){
     var base_url = '//api.seatgeek.com/2/events?';
+    //tradition will parse array valued params properly
+    jQuery.ajaxSettings.traditional = true;
     var params = {
         aid: 11799,
         client_id: 'NDA0ODEwNnwxNDUxNTIwNTY1',
         range: window.settings.distance || "20mi",
-        'taxonomies.name': 'concert',
+        'taxonomies.name': ['concert', 'music_festival'],
         'datetime_local.gte': moment().local().startOf('day').add(window.settings.startdate, 'days').format('YYYY-MM-DD'),
         'datetime_local.lte': moment().local().startOf('day').add(window.settings.enddate + 1, 'days').format('YYYY-MM-DD'),
         per_page: 500,
     }
-    if(!$('#loader').is(':visible')){
-        $('#loader').openModal({
-            opacity: 0.8,
-            dismissible: true,
-        });
-    }
+    $('#loader').slideDown();
+    $('#loader > .preloader-wrapper').show();
     if(window.settings.custom_location_enable && window.settings.custom_location != ''){
         $('#loading-message').text('Confirming Custom Location...').fadeIn(200);
         var geo = geo_from_address(window.settings.custom_location);
@@ -233,8 +248,7 @@ function get_events(){
             );
             setTimeout(function(){
                 $('.button-collapse').sideNav('show');
-                $('#loader').closeModal({out_duration: 0});
-                $('#loader > .preloader-wrapper').show();
+                $('#loader').hide();
                 $('#custom_location').select();
             }, 4000);
             return;
@@ -249,7 +263,7 @@ function get_events(){
         params['geoip'] = true;
     }
     var url = base_url + $.param(params);
-    //console.log(url)
+    console.log(url)
     $('#loading-message').text('Finding concerts...').fadeIn(200);
     $.ajax({
         url: url,
@@ -281,7 +295,8 @@ function get_events(){
                     console.log(response);
                     $.ajax(this);
                 }else{
-                    $('#loader').html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
+                    $('#loader > .preloader-wrapper').hide();
+                    $('#loading-message').html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
                         +   "No concerts found in: " + response.meta.geolocation.display_name +"<br>"
                         +   "Is this not where you are? Try enabling improved location accuracy in <i class='mdi-navigation-menu'></i>Settings."
                     );
@@ -296,7 +311,8 @@ function get_events(){
                 }).fadeTo(500, 1);
                 $.ajax(this);
             }else{
-                $('#loader').html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
+                $('#loader > .preloader-wrapper').hide();
+                $('#loading-message').html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
                     +   "We dun goofed!<br>Sorry, my servers are down right now. Please try again later."
                 );
             }
@@ -317,23 +333,19 @@ function parse_events(events){
         (function (i) {
             var event = events[i];
             window.events[event.id] = event;
+            window.venues[event.venue.id] = event.venue;
             for(var j = 0; j < event.performers.length; j++) {
                 (function (j) {
                     var performer = event.performers[j];
-                    window.artists[performer.id] = performer
+                    window.artists[performer.id] = performer;
                     promises.push(
                         $.ajax({
                             url: soundcloud_url(performer.name, 3),
                             dataType: 'json',
                             cache: true,
                             beforeSend: function() {
-                                if(!$('#loader').is(':visible')){
-                                    $('#loader').openModal({
-                                        in_duration: 0,
-                                        opacity: 0.8,
-                                        dismissible: false,
-                                    });
-                                }
+                                $('#loader').slideDown();
+                                $('#loader > .preloader-wrapper').show();
                                 $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
                                     $(this).text('Loading tracks...');
                                 }).fadeTo(500, 1);
@@ -349,13 +361,13 @@ function parse_events(events){
     }
     $.when.apply($, promises).then(function() {
         // returned data is in arguments[0][0], arguments[1][0], ... arguments[9][0]
-        $('#loader').closeModal();
+        $('#loader').slideUp();
         load_tracks(create_track_list());
         promises.length = 0;
     }, function(e) {
         // error occurred
         console.log(e);
-        $('#loader').closeModal();
+        $('#loader').slideUp();
         // Try to load anyway
         load_tracks(create_track_list());
         promises.length = 0;
@@ -429,14 +441,12 @@ function load_tracks(track_list){
     $('.playlist-item .secondary-content').on('tap click', function(e) {
         var track = window.tracks[$(e.target).parents('[data-id]').attr('data-id')];
         //console.log(track);
-        set_event_info(track.event_id, track.id);
-        if(window.matchMedia('(max-width: 600px)').matches){
-            active_pane($('#event-pane'));
-        }
+        set_event_info(track.event_id, tracks[track.id].artist_id);
+        active_pane($('#event-pane'));
         return false;
     });
     if(track_limit < track_list.length){
-        var more = $('<a>').attr({'class': 'collection-item center', href: ''}).text('Load more');
+        var more = $('<a>').attr({'class': 'collection-item center', href: 'javascript:void(0)'}).text('Load more');
         $('#playlist').append(more);
         more.on('tap click', function(e){
             e.preventDefault();
@@ -445,12 +455,14 @@ function load_tracks(track_list){
             more.slideUp('medium');
         });
     }
-    if(!isMobile() && document.querySelector('#autoplay').checked && audio.paused){
+    if(!isMobile() && window.settings.autoplay && audio.paused){
         $('.playlist-item').first().trigger('click');
-    }else if($('#play').html() != 'pause'){
-        var track = window.tracks[$('.playlist-item').first().attr('data-id')];
-        set_event_info(track.event_id, track.id);
     }
+//    }else if($('#play').html() != 'pause'){
+//        var track = window.tracks[$('.playlist-item').first().attr('data-id')];
+//        set_event_info(track.event_id, track.id);
+//        document.querySelector('#waveform').setAttribute('src', track.waveform_url);
+//    }
     init_dismissables();
 }
 
@@ -493,7 +505,7 @@ function play_track(track_id){
         $('#now-playing-artist').text(window.artists[track.artist_id].name);
         $('#now-playing-title').text(track.title);
     }).fadeTo(1000,1);
-    set_event_info(track.event_id, track_id);
+    set_event_info(track.event_id, tracks[track_id].artist_id);
     try{
         ga('send', 'event', 'play',
             window.artists[track.artist_id].name,
@@ -529,10 +541,8 @@ function keydown(e){
 function refresh_playlist() {
     $('#playlist').empty();
     if(window.settings.geolocation && 'geolocation' in navigator && !window.coordinates){
-        $('#loader').openModal({
-            opacity: 0.8,
-            dismissible: false,
-        });
+        $('#loader').slideDown();
+        $('#loader > .preloader-wrapper').show();
         $('#loading-message').text('Determining your location...').fadeIn(200);;
         var success = function(position) {
             window.coordinates = position.coords;
@@ -694,7 +704,7 @@ function init_settings(){
         if(this.checked) {
             navigator.geolocation.getCurrentPosition(function(position){
                 window.coordinates = position.coords;
-                console.log(window.coordinates);
+                //console.log(window.coordinates);
             }, null, {maximumAge:60*60*1000, timeout:8000, enableHighAccuracy: false});
         }
     });
@@ -747,6 +757,8 @@ function update_settings(){
         new_settings['custom_location'] = '';
     }
     if(JSON.stringify(window.settings) !== JSON.stringify(new_settings)){
+        console.log(window.settings);
+        console.log(new_settings);
         window.settings = new_settings;
         localStorage['settings'] = JSON.stringify(new_settings);
         refresh_playlist();
@@ -763,8 +775,13 @@ function formatSeconds(seconds){
     return timestring
 }
 
-function set_event_info(event_id, track_id){
+function set_event_info(event_id, artist_id){
+    $('#welcome').fadeOut().remove();
     if(window.eventinfo == event_id){
+        $('#event-artists > * > .collapsible-header').removeClass('active');
+        $('#event-artists > [data-artist-id='+artist_id+'] > .collapsible-header').addClass('active');
+        console.log($('#event-artists > [data-artist-id='+artist_id+'] > .collapsible-header'));
+        $('#event-artists').collapsible();
         return;
     }
     window.eventinfo = event_id;
@@ -783,7 +800,15 @@ function set_event_info(event_id, track_id){
     maps_url = maps_url + $.param(params);
     $('#event-venue').clearQueue().stop().fadeTo('medium', 0.1, function() {
         $(this).html('@ ');
-        $(this).append($('<a>').text(event.venue.name).attr({'href': maps_url, 'target': '_blank'}));
+        var venue_link = $('<a>').text(event.venue.name).attr({
+            'href': 'javascript:void(0)',
+            'data-id': event.venue.id,
+        });
+        venue_link.on('tap click', function(e){
+            set_venue_info(this.getAttribute('data-id'));
+            active_pane($('#venue-pane'));
+        }); 
+        $(this).append(venue_link);
     }).fadeTo('medium', 1);
     // Date
     var time = '';
@@ -832,19 +857,20 @@ function set_event_info(event_id, track_id){
                     .append($('<div>').addClass('collapsible-header').text(artist.name))
                     .append($('<div>').addClass('collapsible-body'))
             $(this).append(el);
-            if(artist.id == tracks[track_id].artist_id){
+            if(artist.id == artist_id){
                 el.children().first().addClass('active');
             }
-            lastfm_artist_info(artist.id);
+            var el = $('.artist-item[data-artist-id="' + artist.id  + '"] .collapsible-body');
+            lastfm_artist_info(artist.id, el);
             //echonest_artist_info(artist.id);
         }
         $(this).collapsible();
     }).fadeTo('medium', 1);
+    get_official_ticket_url(event.url);
 }
 
-function lastfm_artist_info(artist_id){
+function lastfm_artist_info(artist_id, el){
     var apiKey = "812ddaf7105675342e456ebf4eab4e92";
-    //var id = "jambase:artist:"+artistID;
     var lastfm_url = 'http://ws.audioscrobbler.com/2.0/?';
     var params = {
         'api_key': apiKey,
@@ -864,7 +890,7 @@ function lastfm_artist_info(artist_id){
         success : function(data) {
             var artist_profile = data.artist;
             //console.log(artist_profile);
-            var body = $('.artist-item[data-artist-id="' + artist_id  + '"] .collapsible-body');
+            var body = el;//$('.artist-item[data-artist-id="' + artist_id  + '"] .collapsible-body');
             if(typeof artist_profile === "undefined"){
                 body.append($('<p>').text('Unknown artist'));
                 return;
@@ -884,7 +910,7 @@ function lastfm_artist_info(artist_id){
                     .append($('<p>').text(similar));
             }
             if(typeof artist_profile.image[0]['#text'] != null){
-                var slider = $('<div>').addClass('center').css({'width': '90%'});
+                var slider = $('<div>').addClass('center').css({'width': '90%', 'margin-top': '8px'});
                 var image = $('<img>').css({'max-width': '100%', 'max-height': '100%'});
                 for(var i = 0; i < artist_profile.image.length; i++) {
                     image.attr('src', artist_profile.image[i]['#text']);
@@ -995,6 +1021,9 @@ function echonest_artist_info(artist_id){
 
 function lastfm_bio(bio) {
     var text = bio.content;
+    text = text.replace(/<a href="http(s):\/\/www\.last\.fm\/music(.*)Read more on Last\.fm\<\/a\>./, "");
+    text = text.replace(/User-contributed text is available under the Creative Commons By-SA License; additional terms may apply./, "");
+
     if(text.length > 600){
         var end_index = 600 + text.substring(600).indexOf('.') + 1;
         text = text.substring(0, end_index);
@@ -1027,13 +1056,33 @@ function best_bio(bios) {
 }
 
 function active_pane(pane){
+    $('.pane.right').not(pane).animate({width:'hide'}, 350, function(){
+        this.classList.add('hide-on-small-only');   
+        if(pane.hasClass('left')){
+            $(this).show();
+        }
+    });
+    //console.log($('.pane').not(pane).not($('#playlist-pane')));
     if(window.matchMedia('(max-width: 600px)').matches){
-        $('.pane').not(pane).animate({width:'hide'}, 350);
+        $('#playlist-pane').not(pane).animate({width:'hide'}, 350, function(){
+			this.classList.add('hide-on-small-only');   
+            $(this).show();
+		});  
+        if(pane.attr('id') != 'playlist-pane'){
+            $('#show-playlist').fadeTo('slow', 1);
+        }
+    }else{
+        $('#playlist-pane').not(pane).addClass('hide-on-small-only');   
+        if(pane.attr('id') != 'playlist-pane'){
+            $('#show-playlist').fadeTo('slow', 1);
+        }
+
     }
-    if(pane.attr('id') != 'playlist-pane'){
-        $('#show-playlist').fadeTo('slow', 1);
-    }
-    pane.animate({width:'show'}, 350);
+	pane.attr('width', 'hide');
+    pane.removeClass('hide-on-small-only');   
+    pane.animate({width:'show'}, 350, function(){
+    });  
+    pane.removeClass('hide');
     if(pane.attr('id') == 'playlist-pane'){
        $('#show-playlist').fadeTo('slow', 0);
     }
@@ -1329,5 +1378,337 @@ function geo_from_address(address){
         'latitude': data.results[0].geometry.location.lat,
         'longitude': data.results[0].geometry.location.lng,
     }
+    window.custom_geo = custom_geo;
     return custom_geo;
+}
+
+function get_official_ticket_url(ticket_url){
+    var url = '//cors-anywhere.herokuapp.com/' + ticket_url;
+    var data = $.ajax({ 
+        url: url,
+        type: 'GET',
+        dataType: 'text',
+        success: function(data) {
+		  var s = data.split('Official Box Office');
+          if(s.length <= 1){
+              return;
+          }
+          s = s[0].split('href').pop();
+          s = s.split('"')[1];
+          $('#event-tickets a').attr('href', s);
+          console.log(s);
+        }
+    });
+}
+
+function init_search(){
+    $('#search-button').on('tap click', function(e){
+        this.classList.add('always-hide');
+        var search = $('#search');
+        $('#search').parent().addClass('always-show');
+        $('#search').focus();
+        $('#search').one('blur', function(e){
+            this.parentElement.classList.remove('always-show');
+            $('#search-button').removeClass('always-hide');
+        });
+    });
+    $('#search').on('focus', function(e){
+        this.select();
+        this.setAttribute('placeholder', 'artist or venue');
+        $(this).parent().css({'width': '400px'});
+    });
+    $('#search').on('blur', function(e){
+        this.setAttribute('placeholder', 'Search');
+        $(this).parent().css({'width': '20%'});
+    });
+    $('#search-icon').on('tap click', function(e){
+        if($('#search').val() == ''){
+            $('#search').focus();
+        }else{
+            search($('#search').val());
+        }
+    });
+    $('#search').on('keydown', function(e){
+        if(e.which == 13){
+            search(this.value);
+            this.blur();
+            return false;
+        }
+    });
+}
+
+var search_term = '';
+var search_semaphore = 0;
+function search(term){
+    search_term = term;
+    $('#search-spinner').show();
+    $('#search-message').text('Searching for ' + term + '...');
+    $('#search-results > .collection-item').remove();
+    active_pane($('#search-pane'));
+    search_artists(term);
+    search_venues(term);
+}
+
+function search_artists(term){
+    window.search_semaphore += 1;
+    var base_url = '//api.seatgeek.com/2/performers?';
+    var params = {
+        'client_id': 'NDA0ODEwNnwxNDUxNTIwNTY1',
+        'aid': 11799,
+        'q': term,
+        'taxonomies.name': ['concert', 'music_festival'],
+        'per_page': 20,
+        'format': 'json',
+    }
+    var url = base_url + $.param(params, true);
+    $.ajax({
+        url: url,
+        tryCount : 0,
+        retryLimit : 1,
+        timeout: 10000,
+        dataType: 'jsonp',
+        cache: true,
+        success : function(data) {
+            window.search_semaphore -= 1;
+            if(window.search_semaphore <= 0){
+                $('#search-spinner').hide();
+                $('#search-message').text('Search results');
+            }
+            var exact_match = data.performers.find(function(el){
+                return el.name.toLowerCase() == term.toLowerCase();
+            });
+            if(exact_match){
+                data.performers = [exact_match];
+            }
+            for(var i=0; i<data.performers.length && i < 5; i++){
+                var performer = data.performers[i];
+                window.artists[performer.id] = performer;
+                var item = $('<a>').attr({'class': 'collection-item', href: 'javascript:void(0)', 'data-id': performer.id})
+                        .append($('<span>').text('Artist: ').css('color', 'white'))
+                        .append($('<span>').text(performer.name));
+                $('#search-results').append(item);
+                item.on('tap click', function(e){
+                    set_artist_info(this.getAttribute('data-id'));
+                    active_pane($('#artist-pane'));
+                });
+            }
+        },
+    });
+}
+
+function search_venues(term){
+    window.search_semaphore += 1;
+    var base_url = '//api.seatgeek.com/2/venues?';
+    var params = {
+        'client_id': 'NDA0ODEwNnwxNDUxNTIwNTY1',
+        'aid': 11799,
+        'q': term,
+        'range': window.settings.distance || "100mi",
+        'format': 'json',
+        'per_page': 20,
+    }
+    if(window.coordinates){
+        params['lat'] = window.coordinates.latitude;
+        params['lon'] = window.coordinates.longitude;
+    }else if(window.custom_geo){
+        params['lat'] = window.custom_geo.latitude;
+        params['lon'] = window.custom_geo.longitude;
+    }else{
+        params['geoip'] = true;
+    }
+    var url = base_url + $.param(params, true);
+    console.log(url);
+    $.ajax({
+        url: url,
+        tryCount : 0,
+        timeout: 10000,
+        dataType: 'jsonp',
+        cache: true,
+        success : function(data) {
+            if(data.venues.length == 0 && this.tryCount == 0){
+                delete params['range'];
+                delete params['geoip'];
+                delete params['lat'];
+                delete params['lon'];
+                this.url = base_url + $.param(params, true);
+                this.tryCount++;
+                $.ajax(this);
+                return
+            }
+            window.search_semaphore -= 1;
+            if(window.search_semaphore <= 0){
+                $('#search-spinner').hide();
+                $('#search-message').text('Search results');
+            }
+            var exact_match = data.venues.find(function(el){
+                return el.name.toLowerCase() == term.toLowerCase();
+            });
+            if(exact_match){
+                data.venues = [exact_match];
+            }
+            for(var i=0; i<data.venues.length && i < 5; i++){
+                var venue = data.venues[i];
+                window.venues[venue.id] = venue;
+                var item = $('<a>').attr({'class': 'collection-item', href: 'javascript:void(0)', 'data-id': venue.id})
+                        .append($('<span>').text('Venue: ').css('color', 'white'))
+                        .append($('<span>').text(venue.name))
+                        .append($('<span>').text(venue.display_location).css('float', 'right'));
+                $('#search-results').append(item);
+                item.on('tap click', function(e){
+                    set_venue_info(this.getAttribute('data-id'));
+                    active_pane($('#venue-pane'));
+                });
+            }
+        },
+    });
+}
+
+function set_artist_info(artist_id){
+    if(window.artistinfo == artist_id){
+        return;
+    }
+    window.artistinfo = artist_id;
+    var artist = artists[artist_id];
+    // Title
+    $('#artist-title').clearQueue().stop().fadeTo('medium', 0.1, function() {
+        $(this).text(artist.name);
+    }).fadeTo('medium', 1);
+    $('#artist-info').empty();
+    lastfm_artist_info(artist_id, $('#artist-info'));
+    $('#artist-events > .collection-item').remove();
+    artist_events(artist_id, $('#artist-events'));
+}
+
+function set_venue_info(venue_id){
+    if(window.venueinfo == venue_id){
+        return;
+    }
+    window.venueinfo = venue_id;
+    var venue = venues[venue_id];
+    // Title
+    $('#venue-title').clearQueue().stop().fadeTo('medium', 0.1, function() {
+        $(this).text(venue.name);
+    }).fadeTo('medium', 1);
+    $('#venue-events > .collection-item').remove();
+    $('#venue-info').empty();
+    venue_events(venue_id, $('#venue-events'));
+
+    var maps_url = 'https://www.google.com/maps/embed/v1/place?';
+    var params = {
+        'q': venue.name + ', ' + venue.extended_address,
+        'key': 'AIzaSyDQ-AFM5aQaD1HX3bSXuKMCh-zpphnxcaI',
+    }
+    maps_url = maps_url + $.param(params);
+    var maps_embed = $('<iframe>');
+    console.log($('#venue-info')[0].getBoundingClientRect().width);
+    maps_embed.attr({
+        'src': maps_url,
+        'frameborder': 0,
+        'allowfullscreen': '',
+        'width': 600,
+        'height': 450,
+    });
+    maps_embed.css({
+        'width': '90%',
+        'height': Math.max(document.documentElement.clientHeight, window.innerHeight || 0)/2,
+        'border': 0,
+    });
+    $('#venue-info').append(maps_embed);
+}
+
+function artist_events(artist_id, el){
+    var base_url = '//api.seatgeek.com/2/events?';
+    jQuery.ajaxSettings.traditional = true;
+    var params = {
+        'aid': 11799,
+        'client_id': 'NDA0ODEwNnwxNDUxNTIwNTY1',
+        'performers.id': artist_id,
+        'taxonomies.name': ['concert', 'music_festival'],
+        'per_page': 50,
+    }
+    var url = base_url + $.param(params);
+    console.log(url)
+    $.ajax({
+        url: url,
+        timeout: 20000,
+        dataType: 'jsonp',
+        cache: true,
+        success: function(response){
+            if(response.events.length <= 0){
+                el.append($('<div>').html('<span style="font-size:4;">☹</span> No upcoming events <span style="font-size:4;">☹</span>').addClass('collection-item center'));
+            }
+            for(var i=0; i<response.events.length; i++){
+                var event = response.events[i];
+                window.events[event.id] = event;
+                var date = moment(event.datetime_local).format('L').slice(0,-5);
+                var item = $('<a>').attr({
+                    'class': 'collection-item',
+                    href: 'javascript:void(0)',
+                    'data-id': event.id
+                })
+                    .append($('<span>').css('float', 'right')
+                                .append($('<span>').text(event.venue.display_location).css('padding', '0 8px 0 4px'))
+                                .append($('<span>').text(date).css('color', 'white'))
+                    )
+                    .append($('<span>').text(event.venue.name).css('color', 'white').addClass('truncate'));
+                el.append(item);
+                item.on('tap click', function(e) {
+                    var event_id = this.getAttribute('data-id');
+                    set_event_info(event_id);
+                    active_pane($('#event-pane'));
+                });
+
+                for(var a=0; a<event.performers.length; a++){
+                    window.artists[event.performers[a].id] = event.performers[a];
+                }
+            }
+        },
+    });
+}
+
+function venue_events(venue_id, el){
+    var base_url = '//api.seatgeek.com/2/events?';
+    jQuery.ajaxSettings.traditional = true;
+    var params = {
+        'aid': 11799,
+        'client_id': 'NDA0ODEwNnwxNDUxNTIwNTY1',
+        'venue.id': venue_id,
+        'taxonomies.name': ['concert', 'music_festival'],
+        'per_page': 200,
+    }
+    var url = base_url + $.param(params);
+    console.log(url)
+    $.ajax({
+        url: url,
+        timeout: 20000,
+        dataType: 'jsonp',
+        cache: true,
+        success: function(response){
+            for(var i=0; i<response.events.length; i++){
+                var event = response.events[i];
+                window.events[event.id] = event;
+                var date = moment(event.datetime_local).format('L').slice(0,-5);
+                var item = $('<a>').attr({
+                    'class': 'collection-item',
+                    href: 'javascript:void(0)',
+                    'data-id': event.id
+                })
+                    .append($('<span>').css('float', 'right')
+                                .append($('<span>').text(event.venue.display_location).css('padding', '0 8px 0 4px'))
+                                .append($('<span>').text(date).css('color', 'white'))
+                    )
+                    .append($('<span>').text(event.title).css('color', 'white').addClass('truncate'));
+                el.append(item);
+                item.on('tap click', function(e) {
+                    var event_id = this.getAttribute('data-id');
+                    set_event_info(event_id);
+                    active_pane($('#event-pane'));
+                });
+
+                for(var a=0; a<event.performers.length; a++){
+                    window.artists[event.performers[a].id] = event.performers[a];
+                }
+            }
+        },
+    });
 }

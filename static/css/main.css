@@ -38,7 +38,7 @@ nav {
     color: #ebebec;   
     line-height: 20px;
     overflow: scroll;
-    padding: 3px;
+    padding: 5px;
 }
 .side-nav input {
     cursor: pointer;
@@ -88,8 +88,12 @@ nav .btn:hover {
     margin:0 auto;
 }
 
-nav a.button-collapse span  {
-    font-size: 1.3rem;
+header > nav a.btn > * {
+    display: inline;
+    font-size: 2.7rem;
+}
+header > nav a.btn span  {
+    font-size: 1.1rem;
     text-transform: none;
     float: right;
 }
@@ -136,12 +140,13 @@ nav .brand-logo.center {
     overflow: auto;
     left: auto;
     right: auto;
-    width: 65%;
+    width: 100%;
     z-index: 2;
 }
-#event-pane {
+.pane.right{
     padding: 5px;
 }
+
 @media only screen and (max-width: 600px) {
     #volume-container {
         padding-left: 0.8rem;
@@ -178,7 +183,7 @@ nav .brand-logo.center {
         font-size: 5rem !important;
     }
     .pane.left{
-        width: 45%;
+        width: 100%;
         max-width: 450px;
     }
 }
@@ -197,11 +202,17 @@ nav .brand-logo.center {
         font-size: 6rem !important;
     }
     .pane.left{
-        width: 45%;
+        width: 10:%;
         max-width: 450px;
     }
 }
 
+.always-show{
+    display: block !important;
+}
+.always-hide{
+    display: none !important;
+}
 
 .collection{
     margin: 0;
@@ -245,6 +256,9 @@ nav .brand-logo.center {
 }
 .playlist-item:not(.active):hover {
     background-color: #000000;
+}
+.playlist-item > p{
+    color: #026480;
 }
 
 #track-actions {
@@ -458,6 +472,9 @@ nav .brand-logo.center {
 .collection a.collection-item {
     color: #20A2C7;
 }
+.collection a.collection-item:not(.active):hover {
+    background-color: #000000;
+}
 
 #logo-attribution {
     position: absolute;
@@ -492,4 +509,76 @@ nav .brand-logo.center {
 
 .side-nav .datepicker {
     width: 46%;
+}
+
+.input-field input[type=search] ~ .material-icons {
+    color: black;
+		margin-top: -6px;
+}
+.input-field input[type=search]{
+		/*padding: 1rem 3rem 1rem 1rem;*/
+		padding: 0 3rem 0 1rem;
+		margin: 0;
+		background-color: rgba(255,255,255,0.10);
+		width: calc(100% - 4rem) !important;
+}
+.input-field input[type=search]:focus{
+}
+nav .search-wrapper{
+		margin: 0.5rem;
+		width: 20%;
+    max-width: 100%;
+		height: calc(100% - 1rem);
+    transition: .25s;
+    z-index: 999;
+}
+nav .search-wrapper:focus{
+		width: 900px;
+}
+.text-center{
+  text-align: center;
+}
+
+#artist-events{
+  margin: 4px 0 4px 0;
+}
+#venue-events{
+  margin: 4px 0 4px 0;
+}
+.arrow {
+    height: 50px;
+    width: 50%;
+    background: transparent;
+    border-radius: 0px 0px 370px  0px;
+    border: solid 5px rgb(144, 164, 174);
+    border-top:none;
+    border-left:none;
+    margin: 0 20px;
+		display: none;
+}
+
+.arrow:before {
+    height:10px;
+    width: 20px;
+    border: 5px solid rgb(144, 164, 174);
+    border-radius: 75px 0px 0px 75px /30px 0px 0px 30px ; 
+    display: block;
+    content: "";
+    border-right:none;
+    position:relative;
+    top: 38px;
+    left: -10px;
+		box-sizing: unset;
+}
+
+.btn {
+	background-color: rgb(32, 162, 199);
+}
+
+.btn:hover {
+	background-color: rgb(38, 170, 210);
+}
+
+a:not(.btn):hover {
+	color: #17AFF8;
 }
