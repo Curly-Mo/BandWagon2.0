@@ -34,7 +34,13 @@ function init(){
     $('.modal-trigger').leanModal();
     init_search();
     $('.arrow').slideDown();
-    $('#start-listening').fadeIn();
+    $('#start-listening').fadeIn(800);
+    $('#venue-listen').on('tap click', function(e){
+        play_artists(null, null, this.getAttribute('data-id'));
+    });
+    $('#artist-listen').on('tap click', function(e){
+        play_artists([this.getAttribute('data-id')]);
+    });
 }
 
 var audioCtx;
@@ -218,7 +224,7 @@ function init_progress(){
 
 function clear_modal(){
     // Refresh loading message
-    console.log('fixing modal');
+    //console.log('fixing modal');
     $('#loader > .preloader-wrapper').show();
 }
 
@@ -263,7 +269,7 @@ function get_events(){
         params['geoip'] = true;
     }
     var url = base_url + $.param(params);
-    console.log(url)
+    //console.log(url)
     $('#loading-message').text('Finding concerts...').fadeIn(200);
     $.ajax({
         url: url,
@@ -326,7 +332,7 @@ function shuffle(o){
 }
 
 function parse_events(events){
-    var max_events = 70;
+    var max_events = 50;
     events = shuffle(events);
     events = apply_event_preferences(events);
     for(var i = 0; i < Math.min(events.length, max_events); i++) {
@@ -423,14 +429,14 @@ function load_tracks(track_list){
     }
     for(var i = 0; i < Math.min(track_list.length, track_limit); i++) {
         var track = track_list[i];
-        $('#playlist').append(
-            $('<li>').attr({'class': 'collection-item dismissable avatar playlist-item', 'data-id': track.id})
+        var playlist_item = $('<li>').attr({'class': 'collection-item dismissable avatar playlist-item', 'data-id': track.id})
                 .append($('<img>').attr({'class': 'image', 'src': track.image}))
                 .append($('<span>').attr('class', 'title').html(window.artists[track.artist_id].name))
                 .append($('<p>').html(track.title))
-                .append($('<a>').addClass('secondary-content waves-effect waves-light btn').append($('<i>').addClass('material-icons').text('info_outline')))
-        );
+                .append($('<a>').addClass('secondary-content waves-effect waves-light btn').append($('<i>').addClass('material-icons').text('info_outline')));
+        $('#playlist').append(playlist_item);
     }
+    $('#playlist').clearQueue().stop().css('height', '').slideDown(Math.min(track_list.length, track_limit)*150);
     $('.playlist-item').on('tap click', function(e){
         // Need to check correct target since Hammer doesn't prevent bubbling with onTap
         if(e.gesture && $(e.gesture.target).closest('.secondary-content')){
@@ -441,8 +447,13 @@ function load_tracks(track_list){
     $('.playlist-item .secondary-content').on('tap click', function(e) {
         var track = window.tracks[$(e.target).parents('[data-id]').attr('data-id')];
         //console.log(track);
-        set_event_info(track.event_id, tracks[track.id].artist_id);
-        active_pane($('#event-pane'));
+        if(track.event_id == null){
+            set_artist_info(track.artist_id);
+            active_pane($('#artist-pane'));
+        }else{
+            set_event_info(track.event_id, track.artist_id);
+            active_pane($('#event-pane'));
+        }
         return false;
     });
     if(track_limit < track_list.length){
@@ -505,7 +516,11 @@ function play_track(track_id){
         $('#now-playing-artist').text(window.artists[track.artist_id].name);
         $('#now-playing-title').text(track.title);
     }).fadeTo(1000,1);
-    set_event_info(track.event_id, tracks[track_id].artist_id);
+    if(track.event_id == null){
+        set_artist_info(track.artist_id);
+    }else{
+        set_event_info(track.event_id, track.artist_id);
+    }
     try{
         ga('send', 'event', 'play',
             window.artists[track.artist_id].name,
@@ -538,8 +553,12 @@ function keydown(e){
     }
 }
 
-function refresh_playlist() {
+function clear_playlist(){
+    $('#playlist').clearQueue().stop().css('height', '').slideUp(200);
     $('#playlist').empty();
+}
+function refresh_playlist() {
+    clear_playlist();
     if(window.settings.geolocation && 'geolocation' in navigator && !window.coordinates){
         $('#loader').slideDown();
         $('#loader > .preloader-wrapper').show();
@@ -757,8 +776,8 @@ function update_settings(){
         new_settings['custom_location'] = '';
     }
     if(JSON.stringify(window.settings) !== JSON.stringify(new_settings)){
-        console.log(window.settings);
-        console.log(new_settings);
+        //console.log(window.settings);
+        //console.log(new_settings);
         window.settings = new_settings;
         localStorage['settings'] = JSON.stringify(new_settings);
         refresh_playlist();
@@ -780,7 +799,7 @@ function set_event_info(event_id, artist_id){
     if(window.eventinfo == event_id){
         $('#event-artists > * > .collapsible-header').removeClass('active');
         $('#event-artists > [data-artist-id='+artist_id+'] > .collapsible-header').addClass('active');
-        console.log($('#event-artists > [data-artist-id='+artist_id+'] > .collapsible-header'));
+        //console.log($('#event-artists > [data-artist-id='+artist_id+'] > .collapsible-header'));
         $('#event-artists').collapsible();
         return;
     }
@@ -846,23 +865,44 @@ function set_event_info(event_id, artist_id){
          $(this).find('a').text('Purchase Tickets');
     }).fadeTo('medium', 1);
     $('#event-lineup').clearQueue().stop().fadeTo('medium', 0.1, function() {
-         $(this).text('Lineup:');
+        if(event.performers.length > 1){
+            var listen = $('<a>').html('♫Listen to Lineup♫').attr({
+                'href': 'javascript:void(0)',
+                'data-id': event.id,
+            });
+            listen.on('tap click', function(e){
+                play_artists(null, this.getAttribute('data-id'));
+            });
+            $(this).html(listen);
+        }else{
+            $(this).empty();
+        }
     }).fadeTo('medium', 1);
     // Artists
     $('#event-artists').clearQueue().stop().fadeTo('medium', 0.1, function() {
         $(this).empty();
         for(var i=0;i<event.performers.length;i++){
             var artist = event.performers[i];
-            var el = $('<li>').addClass('artist-item').attr('data-artist-id', artist.id)
-                    .append($('<div>').addClass('collapsible-header').text(artist.name))
-                    .append($('<div>').addClass('collapsible-body'))
-            $(this).append(el);
-            if(artist.id == artist_id){
-                el.children().first().addClass('active');
+            var item = $('<li>').addClass('artist-item').attr('data-artist-id', artist.id);
+            var header = $('<div>').addClass('collapsible-header').text(artist.name);
+            var el = $('<div>').addClass('collapsible-body');
+            item.append(header).append(el);
+            $(this).append(item);
+            if(artist.id == artist_id || event.performers.length == 1){
+                item.children().first().addClass('active');
             }
-            var el = $('.artist-item[data-artist-id="' + artist.id  + '"] .collapsible-body');
             lastfm_artist_info(artist.id, el);
             //echonest_artist_info(artist.id);
+            var listen = $('<a>').addClass('right').html('♫Listen♫').attr({
+                'href': 'javascript:void(0)',
+                'data-id': artist.id,
+            });
+            header.append(listen);
+            listen.on('tap click', function(e){
+                e.preventDefault();
+                e.stopPropagation();
+                play_artists([this.getAttribute('data-id')]);
+            });
         }
         $(this).collapsible();
     }).fadeTo('medium', 1);
@@ -909,7 +949,18 @@ function lastfm_artist_info(artist_id, el){
                 body.append($('<label>').text('Similar Artists:'))
                     .append($('<p>').text(similar));
             }
-            if(typeof artist_profile.image[0]['#text'] != null){
+            if(body.parent().parent().attr('id') == 'event-artists'){
+                var artist_page = $('<a>').attr({
+                    'href': 'javascript:void(0)',
+                    'data-id': artist_id,
+                }).text('see all shows');
+                body.append($('<p>').addClass('right').append(artist_page));
+                artist_page.on('tap click', function(e){
+                    set_artist_info(this.getAttribute('data-id'));
+                    active_pane($('#artist-pane'));
+                });
+            }
+            if(artist_profile.image[0]['#text'] != null && artist_profile.image[0]['#text'] != ''){
                 var slider = $('<div>').addClass('center').css({'width': '90%', 'margin-top': '8px'});
                 var image = $('<img>').css({'max-width': '100%', 'max-height': '100%'});
                 for(var i = 0; i < artist_profile.image.length; i++) {
@@ -919,6 +970,8 @@ function lastfm_artist_info(artist_id, el){
                     }
                 }
                 body.append(slider.append(image));
+            }else{
+                body.append($('<br>'));
             }
         }
     });
@@ -1088,19 +1141,58 @@ function active_pane(pane){
     }
 }
 
-function play_artist(artist_id, event_id){
-    var artist = artists[artist_id];
-    $.ajax({
-        url: soundcloud_url(artist.name, 15),
-        dataType: 'jsonp',
-        cache: true,
-        success: function(response){
-            $('#playlist').empty();
-            window.tracks = {};
-            parse_tracks(response, event_id, artist_id);
-            load_tracks(create_track_list());
+function play_artists(artist_ids, event_id, venue_id){
+    if(artist_ids == null && event_id != null){
+        var ev = window.events[event_id];
+        artist_ids = jQuery.map(ev.performers, function(performer) { return performer.id; });
+    }
+    if(artist_ids == null && event_id == null && venue_id != null){
+        var venue = window.venues[venue_id];
+        artist_ids = [];
+        for(var i=0; i<venue.events.length; i++){
+            var ev = venue.events[i];
+            var ids = jQuery.map(ev.performers, function(performer) { return performer.id; });
+            artist_ids = artist_ids.concat(ids);
         }
-    })
+    }
+    clear_playlist();
+    window.tracks = {};
+    var tracks_per = Math.max(Math.floor(15-10*Math.log10(artist_ids.length)), 3);
+    for(var i = 0; i < artist_ids.length; i++) {
+        (function (i) {
+            var performer = artists[artist_ids[i]];
+            promises.push(
+                $.ajax({
+                    url: soundcloud_url(performer.name, tracks_per),
+                    dataType: 'json',
+                    cache: true,
+                    beforeSend: function() {
+                        $('#loader').slideDown();
+                        $('#loader > .preloader-wrapper').show();
+                        $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
+                            $(this).text('Loading tracks...');
+                        }).fadeTo(500, 1);
+                    },
+                    success: function(response){
+                        parse_tracks(response, event_id, performer.id);
+                    }
+                })
+            );
+        })(i);
+    }
+    $.when.apply($, promises).then(function() {
+        // returned data is in arguments[0][0], arguments[1][0], ... arguments[9][0]
+        $('#loader').slideUp();
+        load_tracks(create_track_list());
+        promises.length = 0;
+    }, function(e) {
+        // error occurred
+        console.log(e);
+        $('#loader').slideUp();
+        // Try to load anyway
+        load_tracks(create_track_list());
+        promises.length = 0;
+    });
 }
 
 function init_track_actions(){
@@ -1328,7 +1420,7 @@ function echonest_analyze(track_id){
         'format': 'json',
     }
     var url = echonest_url + $.param(params, true);
-    console.log(url)
+    //console.log(url)
     $.ajax({
         url: url,
         timeout: 10000,
@@ -1351,7 +1443,7 @@ function get_city(){
         url += 'long=' + window.coordinates.longitude + '&';
     }
     url += 'jsoncallback=?';
-    console.log(url);
+    //console.log(url);
     $.getJSON(url, 
         function(data){
             $('#custom_location').attr("placeholder", data.geoplugin_city +', ' + data.geoplugin_regionCode);
@@ -1396,7 +1488,7 @@ function get_official_ticket_url(ticket_url){
           s = s[0].split('href').pop();
           s = s.split('"')[1];
           $('#event-tickets a').attr('href', s);
-          console.log(s);
+          //console.log(s);
         }
     });
 }
@@ -1517,7 +1609,7 @@ function search_venues(term){
         params['geoip'] = true;
     }
     var url = base_url + $.param(params, true);
-    console.log(url);
+    //console.log(url);
     $.ajax({
         url: url,
         tryCount : 0,
@@ -1540,11 +1632,11 @@ function search_venues(term){
                 $('#search-spinner').hide();
                 $('#search-message').text('Search results');
             }
-            var exact_match = data.venues.find(function(el){
+            var exact_matches = data.venues.filter(function(el){
                 return el.name.toLowerCase() == term.toLowerCase();
             });
-            if(exact_match){
-                data.venues = [exact_match];
+            if(exact_matches.length == 1){
+                data.venues = exact_matches;
             }
             for(var i=0; i<data.venues.length && i < 5; i++){
                 var venue = data.venues[i];
@@ -1574,6 +1666,7 @@ function set_artist_info(artist_id){
         $(this).text(artist.name);
     }).fadeTo('medium', 1);
     $('#artist-info').empty();
+    $('#artist-listen').hide();
     lastfm_artist_info(artist_id, $('#artist-info'));
     $('#artist-events > .collection-item').remove();
     artist_events(artist_id, $('#artist-events'));
@@ -1591,6 +1684,7 @@ function set_venue_info(venue_id){
     }).fadeTo('medium', 1);
     $('#venue-events > .collection-item').remove();
     $('#venue-info').empty();
+    $('#venue-listen').hide();
     venue_events(venue_id, $('#venue-events'));
 
     var maps_url = 'https://www.google.com/maps/embed/v1/place?';
@@ -1600,7 +1694,6 @@ function set_venue_info(venue_id){
     }
     maps_url = maps_url + $.param(params);
     var maps_embed = $('<iframe>');
-    console.log($('#venue-info')[0].getBoundingClientRect().width);
     maps_embed.attr({
         'src': maps_url,
         'frameborder': 0,
@@ -1627,7 +1720,7 @@ function artist_events(artist_id, el){
         'per_page': 50,
     }
     var url = base_url + $.param(params);
-    console.log(url)
+    //console.log(url)
     $.ajax({
         url: url,
         timeout: 20000,
@@ -1662,6 +1755,8 @@ function artist_events(artist_id, el){
                     window.artists[event.performers[a].id] = event.performers[a];
                 }
             }
+            $('#artist-listen').attr('data-id', artist_id);
+            $('#artist-listen').fadeIn();
         },
     });
 }
@@ -1677,20 +1772,21 @@ function venue_events(venue_id, el){
         'per_page': 200,
     }
     var url = base_url + $.param(params);
-    console.log(url)
+    //console.log(url)
     $.ajax({
         url: url,
         timeout: 20000,
         dataType: 'jsonp',
         cache: true,
         success: function(response){
+            window.venues[venue_id].events = response.events;
             for(var i=0; i<response.events.length; i++){
                 var event = response.events[i];
                 window.events[event.id] = event;
                 var date = moment(event.datetime_local).format('L').slice(0,-5);
                 var item = $('<a>').attr({
                     'class': 'collection-item',
-                    href: 'javascript:void(0)',
+                    'href': 'javascript:void(0)',
                     'data-id': event.id
                 })
                     .append($('<span>').css('float', 'right')
@@ -1709,6 +1805,8 @@ function venue_events(venue_id, el){
                     window.artists[event.performers[a].id] = event.performers[a];
                 }
             }
+            $('#venue-listen').attr('data-id', venue_id);
+            $('#venue-listen').fadeIn();
         },
     });
 }

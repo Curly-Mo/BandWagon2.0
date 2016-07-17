@@ -435,7 +435,7 @@ nav .brand-logo.center {
 }
 
 #event-artists {
-    margin-top: 20px;
+    margin-top: 0px;
 }
 #event-artists li .collapsible-header {
     background-color: #202223; 
@@ -581,4 +581,12 @@ nav .search-wrapper:focus{
 
 a:not(.btn):hover {
 	color: #17AFF8;
+}
+
+ul.collapsible.popout > li:first-child.active {
+  margin-top: 0;
+}
+
+#venue-listen {
+  margin-right: 5%;
 }
