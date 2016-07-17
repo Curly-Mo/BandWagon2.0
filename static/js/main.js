@@ -24,7 +24,6 @@ function init(){
     refresh_playlist();
     init_volume();
     init_audio();
-    init_progress();
     init_track_actions();
     document.addEventListener('keydown', keydown, false)
     $('#show-playlist').on('tap click', function(){
@@ -82,7 +81,12 @@ function init_audio(){
     $('body').append(audio);
 }
 
+var first_play = true;
 function play(){
+    if(first_play){
+        init_progress();
+        first_play = false;
+    }
     audio.play();
     var e = $('#play');
     if(e.html() == 'play_arrow'){
