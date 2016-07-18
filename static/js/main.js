@@ -232,10 +232,8 @@ function clear_modal(){
     $('#loader > .preloader-wrapper').show();
 }
 
-function get_events(){
-    var base_url = '//api.seatgeek.com/2/events?';
-    //tradition will parse array valued params properly
-    jQuery.ajaxSettings.traditional = true;
+function get_events(no_recommendations){
+    var base_url = 'https://api.seatgeek.com/2/';
     var params = {
         aid: 11799,
         client_id: 'NDA0ODEwNnwxNDUxNTIwNTY1',
@@ -272,20 +270,36 @@ function get_events(){
     }else{
         params['geoip'] = true;
     }
-    var url = base_url + $.param(params);
-    //console.log(url)
-    $('#loading-message').text('Finding concerts...').fadeIn(200);
+
+    var liked_artists = JSON.parse(localStorage.getItem('liked_artists'));
+    if(Object.keys(liked_artists).length > 0 && no_recommendations != true){
+        base_url += 'recommendations?';
+        var artist_ids = jQuery.map(liked_artists, function(performer) { return performer.id; });
+        params['performers.id'] = artist_ids;
+    }else{
+        base_url += 'events?';
+    }
+
+    var url = base_url + $.param(params, true);
+    console.log(url);
+    if(no_recommendations == true){
+        $('#loading-message').text('Expanding your tastes...').fadeIn(200);
+    }else{
+        $('#loading-message').text('Finding concerts...').fadeIn(200);
+    }
     $.ajax({
         url: url,
         tryCount : 0,
         retryLimit : 1,
         timeout: 20000,
-        dataType: 'jsonp',
         cache: true,
         complete: function(){
             //$('#loader').closeModal();
         },
         success: function(response){
+            if(response.recommendations != null){
+                response.events = jQuery.map(response.recommendations, function(r){return r.event;});
+            }
             if(response.events.length > 0) {
                 //$('#loader').closeModal({out_duration: 0});
                 parse_events(response.events);
@@ -293,15 +307,24 @@ function get_events(){
             }else{
                 this.tryCount++;
                 if(this.tryCount <= 10){
-                    if(this.tryCount <= 1){
+                    if(response.recommendations != null){
+                        base_url = base_url.replace('recommendations', 'events');
+                        delete params['performers.id'];
                         $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
-                            $(this).text('Increasing search radius...');
+                            $(this).text('No recommendations, expanding tastes...');
                         }).fadeTo(500, 1);
+                        this.tryCount--;
+                    }else{
+                        if(this.tryCount <= 1){
+                            $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
+                                $(this).text('Increasing search radius...');
+                            }).fadeTo(500, 1);
+                        }
+                        params.range = parseFloat(params.range.slice(0,-2)) + 1 + 'mi';
+                        //params['datetime_local.lte'] = moment(params['datetime_local.lte']).add(1, 'days').format('YYYY-MM-DD'),
                     }
-                    params.range = parseFloat(params.range.slice(0,-2)) + 1 + 'mi';
-                    //params['datetime_local.lte'] = moment(params['datetime_local.lte']).add(1, 'days').format('YYYY-MM-DD'),
-                    this.url = base_url + $.param(params);
-                    console.log(url);
+                    this.url = base_url + $.param(params, true);
+                    console.log(this.url);
                     console.log(response);
                     $.ajax(this);
                 }else{
@@ -382,6 +405,9 @@ function parse_events(events){
         load_tracks(create_track_list());
         promises.length = 0;
     });
+    if(events.length < 5){
+        get_events(true);
+    }
 }
 
 function soundcloud_url(artist, limit){
@@ -393,7 +419,7 @@ function soundcloud_url(artist, limit){
         'q': artist,
         'username': artist,
     }
-    var query_string = $.param(params);
+    var query_string = $.param(params, true);
     var url = base_url + '?' + query_string;
     return url
 }
@@ -403,7 +429,7 @@ function soundcloud_stream_url(track_id){
     var params = {
         'client_id': 'f1686e09dcc2a404eccb6f8473803687',
     }
-    var query_string = $.param(params);
+    var query_string = $.param(params, true);
     var url = base_url + '?' + query_string;
     return url
 }
@@ -738,12 +764,18 @@ function init_settings(){
     $('#show-likes, #show-dislikes').on('click', function(){
         load_preferences();
     });
-    $('#add_liked_artist, #add_liked_genre, #add_disliked_artist, #add_disliked_genre').on('keydown', add_pref);
+    //$('#add_liked_artist, #add_liked_genre, #add_disliked_artist, #add_disliked_genre').on('keydown', add_pref);
+    $('#add_liked_artist, #add_disliked_artist').on('keydown', add_pref);
     $('#custom_location').on('input', function(){
         if(this.value == ''){
             $('#custom_location_enable').prop('checked', false);
         }else{
             $('#custom_location_enable').prop('checked', true);
+        }
+    });
+    $('#custom_location').on('keydown', function(e){
+        if(e.which == 13){
+            $('.drag-target').click();
         }
     });
 }
@@ -820,7 +852,7 @@ function set_event_info(event_id, artist_id){
         'sll': event.venue.location.lat+','+event.venue.location.lon,
         //'z': 15,
     }
-    maps_url = maps_url + $.param(params);
+    maps_url = maps_url + $.param(params, true);
     $('#event-venue').clearQueue().stop().fadeTo('medium', 0.1, function() {
         $(this).html('@ ');
         var venue_link = $('<a>').text(event.venue.name).attr({
@@ -1209,61 +1241,64 @@ function play_artists(artist_ids, event_id, venue_id){
 }
 
 function init_track_actions(){
-    $('body').on('click', '#thumb_up', function(){
+    $(document.body).on('click', '#thumb_up', function(){
         var track_id = $(this).parent().prev().attr('data-id');
         var track = tracks[track_id];
         var liked_artists = JSON.parse(localStorage.getItem('liked_artists')) || {};
-        var liked_genres = JSON.parse(localStorage.getItem('liked_genres')) || {};
+//        var liked_genres = JSON.parse(localStorage.getItem('liked_genres')) || {};
         var name = artists[track.artist_id].name;
-        if(!(name.toLowerCase in liked_artists)){
-            liked_artists[name.toLowerCase()] = name;
+        var artist_id = artists[track.artist_id].id;
+        if(!(artist_id in liked_artists)){
+            liked_artists[artist_id] = {'id': artist_id, 'name': name};
             localStorage.setItem('liked_artists', JSON.stringify(liked_artists));
-            var action = "delete_pref('liked_artists', '" + name.toLowerCase()+"');" + 'this.parentNode.remove()';
+            var action = "delete_pref('liked_artists', '" + artist_id +"');" + 'this.parentNode.remove()';
             Materialize.toast('Liked artist: ' + name + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
         }
-        if(track.genre && !(track.genre in liked_genres)){
-            liked_genres[track.genre.toLowerCase()] = track.genre;
-            localStorage.setItem('liked_genres', JSON.stringify(liked_genres));
-            var action = "delete_pref('liked_genres', '" + track.genre.toLowerCase()+"');" + 'this.parentNode.remove()';
-            Materialize.toast('Liked genre: ' + track.genre + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
-        }
+//        if(track.genre && !(track.genre in liked_genres)){
+//            liked_genres[track.genre.toLowerCase()] = track.genre;
+//            localStorage.setItem('liked_genres', JSON.stringify(liked_genres));
+//            var action = "delete_pref('liked_genres', '" + track.genre.toLowerCase()+"');" + 'this.parentNode.remove()';
+//            Materialize.toast('Liked genre: ' + track.genre + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
+//        }
         $(this).parent().slideUp(400);
         try{
             ga('send', 'event', 'thumb_up',
                 name,
-                track.genre
+                artist_id
             );
         }catch(e){
             console.log(e);
         }
     });
-    $('body').on('click', '#thumb_down', function(){
+    $(document.body).on('click', '#thumb_down', function(){
         var track_id = $(this).parent().prev().attr('data-id');
         var track = tracks[track_id];
         var disliked_artists = JSON.parse(localStorage.getItem('disliked_artists')) || {};
-        var disliked_genres = JSON.parse(localStorage.getItem('disliked_genres')) || {};
+//        var disliked_genres = JSON.parse(localStorage.getItem('disliked_genres')) || {};
         var name = artists[track.artist_id].name;
+        var artist_id = artists[track.artist_id].id;
         if(!(name.toLowerCase() in disliked_artists)){
-            disliked_artists[name.toLowerCase()] = name;
+            disliked_artists[artist_id] = {'id': artist_id, 'name': name};
             localStorage.setItem('disliked_artists', JSON.stringify(disliked_artists));
-            var action = "delete_pref('disliked_artists', '" + name.toLowerCase()+"');" + 'this.parentNode.remove()';
+            var action = "delete_pref('disliked_artists', '" + artist_id +"');" + 'this.parentNode.remove()';
             Materialize.toast('Disliked artist: ' + name + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
         }
-        if(track.genre && !(track.genre.toLowerCase in disliked_genres)){
-            disliked_genres[track.genre.toLowerCase()] = track.genre;
-            localStorage.setItem('disliked_genres', JSON.stringify(disliked_genres));
-            var action = "delete_pref('disliked_genres', '" + track.genre.toLowerCase()+"');" + 'this.parentNode.remove()';
-            Materialize.toast('Disliked genre: ' + track.genre + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
-        }
+//        if(track.genre && !(track.genre.toLowerCase in disliked_genres)){
+//            disliked_genres[track.genre.toLowerCase()] = track.genre;
+//            localStorage.setItem('disliked_genres', JSON.stringify(disliked_genres));
+//            var action = "delete_pref('disliked_genres', '" + track.genre.toLowerCase()+"');" + 'this.parentNode.remove()';
+//            Materialize.toast('Disliked genre: ' + track.genre + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
+//        }
         $(this).parent().slideUp(400);
         try{
             ga('send', 'event', 'thumb_down',
                 name,
-                track.genre
+                artist_id
             );
         }catch(e){
             console.log(e);
         }
+        next();
     });
 }
 
@@ -1290,9 +1325,9 @@ function show_track_actions(){
     }
     var pref_types = [
         'liked_artists',
-        'liked_genres',
+//        'liked_genres',
         'disliked_artists',
-        'disliked_genres',
+//        'disliked_genres',
     ];
     var preferences = {};
     for(var i = 0; i < pref_types.length; i++){
@@ -1308,15 +1343,25 @@ function show_track_actions(){
 function load_preferences(){
     var preferences = [
         'liked_artists',
-        'liked_genres',
+//        'liked_genres',
         'disliked_artists',
-        'disliked_genres',
+//        'disliked_genres',
     ];
     for(var i = 0; i < preferences.length; i++){
         var pref = JSON.parse(localStorage.getItem(preferences[i])) || {};
         var el = $('#'+preferences[i]);
         el.empty();
-        var keys = Object.keys(pref).sort();
+        var keys = Object.keys(pref).sort(function(a,b){
+            var nameA = pref[a].name.toLowerCase();
+            var nameB = pref[b].name.toLowerCase();
+            if (nameA < nameB) {
+                return -1;
+            }
+            if (nameA > nameB) {
+                return 1;
+            }
+            return 0;
+        });
         for(var k = 0; k < keys.length; k++){
             var close = $('<i>', {
                 'class': 'material-icons',
@@ -1325,7 +1370,8 @@ function load_preferences(){
             el.append(
                 $('<div>', {
                     'class': 'chip',
-                    'text': pref[keys[k]],
+                    'text': pref[keys[k]].name,
+                    'data-id': pref[keys[k]].id,
                 }).append(close)
             );
             close.on('click', remove_pref);
@@ -1334,10 +1380,10 @@ function load_preferences(){
 }
 
 function remove_pref(){
-    var pref = this.parentNode.childNodes[0].nodeValue;
+    var pref = this.parentNode.getAttribute('data-id');
     var pref_type = $(this).parent().parent().attr('id');
     var preferences = JSON.parse(localStorage.getItem(pref_type)) || {};
-    delete preferences[pref.toLowerCase()]
+    delete preferences[pref]
     localStorage.setItem(pref_type, JSON.stringify(preferences));
 }
 
@@ -1346,17 +1392,43 @@ function add_pref(event){
         var pref_type = this.parentNode.previousElementSibling.id;
         var preferences = JSON.parse(localStorage.getItem(pref_type)) || {};
         if(this.value != ''){
-            preferences[this.value.toLowerCase()] = this.value;
-            localStorage.setItem(pref_type, JSON.stringify(preferences));
-            load_preferences();
+            var term = this.value;
             this.value = '';
+            var base_url = 'https://api.seatgeek.com/2/performers?';
+            var params = {
+                'client_id': 'NDA0ODEwNnwxNDUxNTIwNTY1',
+                'aid': 11799,
+                'q': term,
+                'taxonomies.name': ['concert', 'music_festival'],
+                'per_page': 20,
+                'format': 'json',
+            }
+            var url = base_url + $.param(params, true);
+            $.ajax({
+                url: url,
+                timeout: 10000,
+                dataType: 'jsonp',
+                cache: true,
+                success : function(data) {
+                    var exact_match = data.performers.find(function(el){
+                        return el.name.toLowerCase() == term.toLowerCase();
+                    });
+                    if(exact_match){
+                        data.performers = [exact_match];
+                    }
+                    var artist = data.performers[0]
+                    preferences[artist.id] = {'id': artist.id, 'name': artist.name};
+                    localStorage.setItem(pref_type, JSON.stringify(preferences));
+                    load_preferences();
+                },
+            });
         }
     }
 }
 
 function delete_pref(pref_type, pref){
     var preferences = JSON.parse(localStorage.getItem(pref_type)) || {};
-    delete preferences[pref.toLowerCase()]
+    delete preferences[pref]
     localStorage.setItem(pref_type, JSON.stringify(preferences));
     console.log(this);
 }
@@ -1367,15 +1439,15 @@ function apply_event_preferences(events){
     if(Object.keys(liked_artists).length > 0 || Object.keys(disliked_artists).length > 0){
         for(var i = 0; i < events.length; i++){
             var event = events[i];
-            var performers = jQuery.map(event.performers, function(performer) { return performer.name; });
+            var performers = jQuery.map(event.performers, function(performer) { return performer.id; });
             // Move liked artist events to the front of the list
-            if(performers.some(function(v) { return v.toLowerCase() in liked_artists; })){
+            if(performers.some(function(v) { return v in liked_artists; })){
                 events.splice(i, 1);
                 events.unshift(event);
                 console.log('Moving to front:');
                 console.log(event);
             // Remove disliked artist events
-            }else if(performers.some(function(v) { return v.toLowerCase() in disliked_artists; })){
+            }else if(performers.some(function(v) { return v in disliked_artists; })){
                 events.splice(i, 1);
                 i--;
                 console.log('Removing event:');
@@ -1388,32 +1460,34 @@ function apply_event_preferences(events){
 
 function apply_track_preferences(tracks){
     var liked_artists = JSON.parse(localStorage.getItem('liked_artists')) || {};
-    var liked_genres = JSON.parse(localStorage.getItem('liked_genres')) || {};
-    var disliked_genres = JSON.parse(localStorage.getItem('disliked_genres')) || {};
-    if(Object.keys(liked_artists).length > 0 || Object.keys(liked_genres).length > 0 || Object.keys(disliked_genres).length > 0){
+//    var liked_genres = JSON.parse(localStorage.getItem('liked_genres')) || {};
+//    var disliked_genres = JSON.parse(localStorage.getItem('disliked_genres')) || {};
+    //if(Object.keys(liked_artists).length > 0 || Object.keys(liked_genres).length > 0 || Object.keys(disliked_genres).length > 0){
+    if(Object.keys(liked_artists).length > 0){
         for(var i = 0; i < tracks.length; i++){
             var track = tracks[i];
             // Move liked artists close to the top of playlist
-            if(artists[track.artist_id].name.toLowerCase() in liked_artists){
+            if(track.artist_id in liked_artists){
                 tracks.splice(i, 1);
                 tracks.splice(rand_int(0, 8), 0, track); 
-                delete liked_artists[artists[track.artist_id].name.toLowerCase()];
+                delete liked_artists[track.artist_id];
                 console.log('Prioritizing track:');
-                console.log(track);
-            // Move liked genres close to the top of playlist
-            }else if(track.genre && track.genre.toLowerCase() in liked_genres){
-                tracks.splice(i, 1);
-                tracks.splice(rand_int(0, 8), 0, track); 
-                delete liked_genres[track.genre.toLowerCase()];
-                console.log('Prioritizing track:');
-                console.log(track);
-            // Remove tracks of disliked genres
-            }else if(track.genre && track.genre.toLowerCase() in disliked_genres){
-                tracks.splice(i, 1);
-                i--;
-                console.log('Removing track:');
                 console.log(track);
             }
+            // Move liked genres close to the top of playlist
+//            }else if(track.genre && track.genre.toLowerCase() in liked_genres){
+//                tracks.splice(i, 1);
+//                tracks.splice(rand_int(0, 8), 0, track); 
+//                delete liked_genres[track.genre.toLowerCase()];
+//                console.log('Prioritizing track:');
+//                console.log(track);
+//            // Remove tracks of disliked genres
+//            }else if(track.genre && track.genre.toLowerCase() in disliked_genres){
+//                tracks.splice(i, 1);
+//                i--;
+//                console.log('Removing track:');
+//                console.log(track);
+//            }
         }
     }
     return tracks;
@@ -1470,7 +1544,7 @@ function geo_from_address(address){
         'key': 'AIzaSyAxT696F5cHCzGxozFpAD--kmLWiCGzByo',
         'address': address,
     }
-    var url = base_url + $.param(params);
+    var url = base_url + $.param(params, true);
     var data = $.ajax({ 
         url: url,
         async: false,
@@ -1556,7 +1630,7 @@ function search(term){
 
 function search_artists(term){
     window.search_semaphore += 1;
-    var base_url = '//api.seatgeek.com/2/performers?';
+    var base_url = 'https://api.seatgeek.com/2/performers?';
     var params = {
         'client_id': 'NDA0ODEwNnwxNDUxNTIwNTY1',
         'aid': 11799,
@@ -1603,7 +1677,7 @@ function search_artists(term){
 
 function search_venues(term){
     window.search_semaphore += 1;
-    var base_url = '//api.seatgeek.com/2/venues?';
+    var base_url = 'https://api.seatgeek.com/2/venues?';
     var params = {
         'client_id': 'NDA0ODEwNnwxNDUxNTIwNTY1',
         'aid': 11799,
@@ -1705,7 +1779,7 @@ function set_venue_info(venue_id){
         'q': venue.name + ', ' + venue.extended_address,
         'key': 'AIzaSyDQ-AFM5aQaD1HX3bSXuKMCh-zpphnxcaI',
     }
-    maps_url = maps_url + $.param(params);
+    maps_url = maps_url + $.param(params, true);
     var maps_embed = $('<iframe>');
     maps_embed.attr({
         'src': maps_url,
@@ -1723,8 +1797,7 @@ function set_venue_info(venue_id){
 }
 
 function artist_events(artist_id, el){
-    var base_url = '//api.seatgeek.com/2/events?';
-    jQuery.ajaxSettings.traditional = true;
+    var base_url = 'https://api.seatgeek.com/2/events?';
     var params = {
         'aid': 11799,
         'client_id': 'NDA0ODEwNnwxNDUxNTIwNTY1',
@@ -1732,7 +1805,7 @@ function artist_events(artist_id, el){
         'taxonomies.name': ['concert', 'music_festival'],
         'per_page': 50,
     }
-    var url = base_url + $.param(params);
+    var url = base_url + $.param(params, true);
     //console.log(url)
     $.ajax({
         url: url,
@@ -1775,8 +1848,7 @@ function artist_events(artist_id, el){
 }
 
 function venue_events(venue_id, el){
-    var base_url = '//api.seatgeek.com/2/events?';
-    jQuery.ajaxSettings.traditional = true;
+    var base_url = 'https://api.seatgeek.com/2/events?';
     var params = {
         'aid': 11799,
         'client_id': 'NDA0ODEwNnwxNDUxNTIwNTY1',
@@ -1784,7 +1856,7 @@ function venue_events(venue_id, el){
         'taxonomies.name': ['concert', 'music_festival'],
         'per_page': 200,
     }
-    var url = base_url + $.param(params);
+    var url = base_url + $.param(params, true);
     //console.log(url)
     $.ajax({
         url: url,
