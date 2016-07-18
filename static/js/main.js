@@ -433,7 +433,7 @@ function load_tracks(track_list){
     }
     for(var i = 0; i < Math.min(track_list.length, track_limit); i++) {
         var track = track_list[i];
-        var playlist_item = $('<li>').attr({'class': 'collection-item dismissable avatar playlist-item', 'data-id': track.id})
+        var playlist_item = $('<li>').attr({'class': 'collection-item avatar playlist-item', 'data-id': track.id})
                 .append($('<img>').attr({'class': 'image', 'src': track.image}))
                 .append($('<span>').attr('class', 'title').html(window.artists[track.artist_id].name))
                 .append($('<p>').html(track.title))
@@ -1146,9 +1146,15 @@ function active_pane(pane){
 }
 
 function play_artists(artist_ids, event_id, venue_id){
+    if(window.matchMedia('(max-width: 600px)').matches){
+        active_pane($('#playlist-pane'));
+    }
     if(artist_ids == null && event_id != null){
         var ev = window.events[event_id];
         artist_ids = jQuery.map(ev.performers, function(performer) { return performer.id; });
+        for(var a=0; a<artist_ids.length; a++){
+            window.artists[artist_ids[a]].event_id = event_id;
+        }
     }
     if(artist_ids == null && event_id == null && venue_id != null){
         var venue = window.venues[venue_id];
@@ -1156,6 +1162,9 @@ function play_artists(artist_ids, event_id, venue_id){
         for(var i=0; i<venue.events.length; i++){
             var ev = venue.events[i];
             var ids = jQuery.map(ev.performers, function(performer) { return performer.id; });
+            for(var a=0; a<ids.length; a++){
+                window.artists[ids[a]].event_id = ev.id;
+            }
             artist_ids = artist_ids.concat(ids);
         }
     }
@@ -1178,7 +1187,7 @@ function play_artists(artist_ids, event_id, venue_id){
                         }).fadeTo(500, 1);
                     },
                     success: function(response){
-                        parse_tracks(response, event_id, performer.id);
+                        parse_tracks(response, performer.event_id, performer.id);
                     }
                 })
             );
@@ -1732,7 +1741,7 @@ function artist_events(artist_id, el){
         cache: true,
         success: function(response){
             if(response.events.length <= 0){
-                el.append($('<div>').html('<span style="font-size:4;">☹</span> No upcoming events <span style="font-size:4;">☹</span>').addClass('collection-item center'));
+                el.append($('<div>').html('<span style="font-size:4;">☹</span> No upcoming concerts <span style="font-size:4;">☹</span>').addClass('collection-item center'));
             }
             for(var i=0; i<response.events.length; i++){
                 var event = response.events[i];

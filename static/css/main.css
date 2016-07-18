@@ -580,7 +580,7 @@ nav .search-wrapper:focus{
 }
 
 a:not(.btn):hover {
-	color: #17AFF8;
+	color: #17AFF8 !important;
 }
 
 ul.collapsible.popout > li:first-child.active {
