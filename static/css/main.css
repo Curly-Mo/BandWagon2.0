@@ -202,7 +202,7 @@ nav .brand-logo.center {
         font-size: 6rem !important;
     }
     .pane.left{
-        width: 10:%;
+        width: 100%;
         max-width: 450px;
     }
 }
@@ -517,6 +517,7 @@ nav .brand-logo.center {
 }
 .input-field input[type=search]{
 		/*padding: 1rem 3rem 1rem 1rem;*/
+    line-height: normal;
 		padding: 0 3rem 0 1rem;
 		margin: 0;
 		background-color: rgba(255,255,255,0.10);
@@ -568,7 +569,7 @@ nav .search-wrapper:focus{
     position:relative;
     top: 38px;
     left: -10px;
-		box-sizing: unset;
+		box-sizing: initial;
 }
 
 .btn {

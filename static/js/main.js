@@ -192,23 +192,6 @@ function init_progress(){
         },
     });
     audio.addEventListener('timeupdate', updateProgress, false);
-    function updateProgress() {
-        var value = 0;
-        if (audio.currentTime > 0) {
-            value = (100 / audio.duration) * audio.currentTime;
-        }
-        slider.noUiSlider.set(value);
-        if(audio.duration){
-            $('#track-length').text(formatSeconds(audio.duration));
-        }
-        if(audio.duration){
-            $('#track-time').text(formatSeconds(audio.currentTime));
-        }
-        $('#track-time').css('left', value + '%');
-        if(value > 95){
-            $('#track-time').fadeOut('slow');
-        }
-    }
     slider.noUiSlider.on('slide', set_progress);
     function set_progress(value){
         audio.currentTime = value / (100 / audio.duration); 
@@ -223,6 +206,24 @@ function init_progress(){
     function hideWaveform(){
         $('#waveform, #track-length, #track-time').fadeOut('fast');
         $('#progress').clearQueue().stop().animate({ height: '4px' }, 'easeInOutCubic');
+    }
+}
+function updateProgress() {
+    var value = 0;
+    if (audio.currentTime > 0) {
+        value = (100 / audio.duration) * audio.currentTime;
+    }
+    var slider = document.querySelector('#progress');
+    slider.noUiSlider.set(value);
+    if(audio.duration){
+        $('#track-length').text(formatSeconds(audio.duration));
+    }
+    if(audio.duration){
+        $('#track-time').text(formatSeconds(audio.currentTime));
+    }
+    $('#track-time').css('left', value + '%');
+    if(value > 95){
+        $('#track-time').fadeOut('slow');
     }
 }
 
@@ -272,7 +273,7 @@ function get_events(no_recommendations){
     }
 
     var liked_artists = JSON.parse(localStorage.getItem('liked_artists'));
-    if(Object.keys(liked_artists).length > 0 && no_recommendations != true){
+    if(liked_artists !=null && Object.keys(liked_artists).length > 0 && no_recommendations != true){
         base_url += 'recommendations?';
         var artist_ids = jQuery.map(liked_artists, function(performer) { return performer.id; });
         params['performers.id'] = artist_ids;
@@ -281,7 +282,7 @@ function get_events(no_recommendations){
     }
 
     var url = base_url + $.param(params, true);
-    console.log(url);
+    //console.log(url);
     if(no_recommendations == true){
         $('#loading-message').text('Expanding your tastes...').fadeIn(200);
     }else{
@@ -311,7 +312,7 @@ function get_events(no_recommendations){
                         base_url = base_url.replace('recommendations', 'events');
                         delete params['performers.id'];
                         $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
-                            $(this).text('No recommendations, expanding tastes...');
+                            $(this).text('Expanding your tastes...');
                         }).fadeTo(500, 1);
                         this.tryCount--;
                     }else{
@@ -535,8 +536,19 @@ function play_item(){
 }
 
 function play_track(track_id){
+    //bullshit to make safari not crash
+    audio.remove();
+    audio = new Audio();
+    audio.crossOrigin = "anonymous";
+    audio_source.disconnect();
+    audio_source = audioCtx.createMediaElementSource(audio);
+    audio_source.connect(gain_node);
+    audio.addEventListener('ended', next);
+    audio.addEventListener('timeupdate', updateProgress, false);
+    $('body').append(audio);
     //audio.pause();
     //audio.removeAttribute("src"); 
+    ////
     audio.src = soundcloud_stream_url(track_id)
     play();
     document.querySelector('#waveform').setAttribute('src', tracks[track_id].waveform_url);
@@ -1304,7 +1316,6 @@ function init_track_actions(){
 
 function show_track_actions(){
     var active = $(this);
-    console.log(tracks[active.attr('data-id')].genre);
     var track_actions = $('#track-actions');
     if(track_actions.length == 0){
         track_actions = $('<li>').attr('id', 'track-actions')
@@ -1335,7 +1346,7 @@ function show_track_actions(){
         preferences = jQuery.extend(preferences, pref);
     }
     var track = tracks[active.attr('data-id')];
-    if(!(track.genre && track.genre.toLowerCase() in preferences || artists[track.artist_id].name.toLowerCase() in preferences)){
+    if(!(track.artist_id in preferences)){
         track_actions.insertAfter(active).stop(true, true).slideDown(600);
     }
 }
@@ -1436,7 +1447,7 @@ function delete_pref(pref_type, pref){
 function apply_event_preferences(events){
     var liked_artists = JSON.parse(localStorage.getItem('liked_artists')) || {};
     var disliked_artists = JSON.parse(localStorage.getItem('disliked_artists')) || {};
-    if(Object.keys(liked_artists).length > 0 || Object.keys(disliked_artists).length > 0){
+    if(liked_artists != null && Object.keys(liked_artists).length > 0 || disliked_artists != null &&Object.keys(disliked_artists).length > 0){
         for(var i = 0; i < events.length; i++){
             var event = events[i];
             var performers = jQuery.map(event.performers, function(performer) { return performer.id; });
@@ -1447,11 +1458,13 @@ function apply_event_preferences(events){
                 console.log('Moving to front:');
                 console.log(event);
             // Remove disliked artist events
-            }else if(performers.some(function(v) { return v in disliked_artists; })){
-                events.splice(i, 1);
-                i--;
-                console.log('Removing event:');
-                console.log(event);
+            }else if(performers.some(function(v){return v in disliked_artists;})){
+                if(event.type != 'music_festival'){
+                    events.splice(i, 1);
+                    i--;
+                    console.log('Removing event:');
+                    console.log(event);
+                }
             }
         }
     }
@@ -1463,7 +1476,7 @@ function apply_track_preferences(tracks){
 //    var liked_genres = JSON.parse(localStorage.getItem('liked_genres')) || {};
 //    var disliked_genres = JSON.parse(localStorage.getItem('disliked_genres')) || {};
     //if(Object.keys(liked_artists).length > 0 || Object.keys(liked_genres).length > 0 || Object.keys(disliked_genres).length > 0){
-    if(Object.keys(liked_artists).length > 0){
+    if(liked_artists != null && Object.keys(liked_artists).length > 0){
         for(var i = 0; i < tracks.length; i++){
             var track = tracks[i];
             // Move liked artists close to the top of playlist
