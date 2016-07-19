@@ -505,7 +505,7 @@ function load_tracks(track_list){
 //        set_event_info(track.event_id, track.id);
 //        document.querySelector('#waveform').setAttribute('src', track.waveform_url);
 //    }
-    init_dismissables();
+    //init_dismissables();
 }
 
 function create_track_list(){
@@ -1363,17 +1363,26 @@ function load_preferences(){
         var el = $('#'+preferences[i]);
         el.empty();
         var keys = Object.keys(pref).sort(function(a,b){
-            var nameA = pref[a].name.toLowerCase();
-            var nameB = pref[b].name.toLowerCase();
-            if (nameA < nameB) {
-                return -1;
+            try{
+                var nameA = pref[a].name.toLowerCase();
+                var nameB = pref[b].name.toLowerCase();
+                if (nameA < nameB) {
+                    return -1;
+                }
+                if (nameA > nameB) {
+                    return 1;
+                }
+                return 0;
+            }catch(e){
+                return 0;
             }
-            if (nameA > nameB) {
-                return 1;
-            }
-            return 0;
         });
         for(var k = 0; k < keys.length; k++){
+            // In case junk got in there (i.e. from an older version of BandWagon)
+            if(pref[keys[k]].name == null || pref[keys[k]].id == null){
+                delete preferences[pref]
+                localStorage.setItem(pref_type, JSON.stringify(preferences));
+            }
             var close = $('<i>', {
                 'class': 'material-icons',
                 'text': 'close',
