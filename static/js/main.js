@@ -275,7 +275,7 @@ function get_events(no_recommendations){
     var liked_artists = JSON.parse(localStorage.getItem('liked_artists'));
     if(liked_artists !=null && Object.keys(liked_artists).length > 0 && no_recommendations != true){
         base_url += 'recommendations?';
-        var artist_ids = jQuery.map(liked_artists, function(performer) { return performer.id; });
+        var artist_ids = jQuery.map(liked_artists, function(performer) { if(performer.id != null){return performer.id;}});
         params['performers.id'] = artist_ids;
     }else{
         base_url += 'events?';
@@ -1382,6 +1382,7 @@ function load_preferences(){
             if(pref[keys[k]].name == null || pref[keys[k]].id == null){
                 delete pref[keys[k]];
                 localStorage.setItem(preferences[i], JSON.stringify(pref));
+                continue;
             }
             var close = $('<i>', {
                 'class': 'material-icons',
