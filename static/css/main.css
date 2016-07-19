@@ -591,3 +591,7 @@ ul.collapsible.popout > li:first-child.active {
 #venue-listen {
   margin-right: 5%;
 }
+
+.modal-close{
+  color: #aaaaaa;
+}
