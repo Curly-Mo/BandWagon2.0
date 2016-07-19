@@ -1380,8 +1380,8 @@ function load_preferences(){
         for(var k = 0; k < keys.length; k++){
             // In case junk got in there (i.e. from an older version of BandWagon)
             if(pref[keys[k]].name == null || pref[keys[k]].id == null){
-                delete preferences[pref]
-                localStorage.setItem(pref_type, JSON.stringify(preferences));
+                delete pref[keys[k]];
+                localStorage.setItem(preferences[i], JSON.stringify(pref));
             }
             var close = $('<i>', {
                 'class': 'material-icons',
