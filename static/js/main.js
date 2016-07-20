@@ -303,7 +303,7 @@ function get_events(no_recommendations){
             }
             if(response.events.length > 0) {
                 //$('#loader').closeModal({out_duration: 0});
-                parse_events(response.events);
+                parse_events(response.events, response.recommendations);
                 $('#custom_location').attr("placeholder", response.meta.geolocation.display_name);
             }else{
                 this.tryCount++;
@@ -325,7 +325,7 @@ function get_events(no_recommendations){
                         //params['datetime_local.lte'] = moment(params['datetime_local.lte']).add(1, 'days').format('YYYY-MM-DD'),
                     }
                     this.url = base_url + $.param(params, true);
-                    console.log(this.url);
+                    console.log(this);
                     console.log(response);
                     $.ajax(this);
                 }else{
@@ -345,6 +345,9 @@ function get_events(no_recommendations){
                 }).fadeTo(500, 1);
                 $.ajax(this);
             }else{
+                console.log(response);
+                console.log(status);
+                console.log(error);
                 $('#loader > .preloader-wrapper').hide();
                 $('#loading-message').html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
                     +   "We dun goofed!<br>Sorry, my servers are down right now. Please try again later."
@@ -359,7 +362,7 @@ function shuffle(o){
     return o;
 }
 
-function parse_events(events){
+function parse_events(events, recommendations){
     var max_events = 50;
     events = shuffle(events);
     events = apply_event_preferences(events);
@@ -406,7 +409,8 @@ function parse_events(events){
         load_tracks(create_track_list());
         promises.length = 0;
     });
-    if(events.length < 5){
+    if(events.length < 5 && recommendations != null){
+        console.log('not enough recommendations, adding all events');
         get_events(true);
     }
 }
