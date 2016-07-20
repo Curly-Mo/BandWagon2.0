@@ -775,9 +775,17 @@ function init_settings(){
     load_settings();
     $('#show-likes, #show-dislikes').on('click', function(){
         load_preferences();
+        facebook_init();
     });
     //$('#add_liked_artist, #add_liked_genre, #add_disliked_artist, #add_disliked_genre').on('keydown', add_pref);
-    $('#add_liked_artist, #add_disliked_artist').on('keydown', add_pref);
+    $('#add_liked_artist, #add_disliked_artist').on('keydown', function(){
+        if (event.keyCode == 13) {
+            var pref_type = this.parentNode.previousElementSibling.id;
+            var preferences = JSON.parse(localStorage.getItem(pref_type)) || {};
+            add_pref(pref_type, this.value);
+            this.value = '';
+        }
+    });
     $('#custom_location').on('input', function(){
         if(this.value == ''){
             $('#custom_location_enable').prop('checked', false);
@@ -1166,9 +1174,9 @@ function active_pane(pane){
     //console.log($('.pane').not(pane).not($('#playlist-pane')));
     if(window.matchMedia('(max-width: 600px)').matches){
         $('#playlist-pane').not(pane).animate({width:'hide'}, 350, function(){
-			this.classList.add('hide-on-small-only');   
+            this.classList.add('hide-on-small-only');   
             $(this).show();
-		});  
+        });  
         if(pane.attr('id') != 'playlist-pane'){
             $('#show-playlist').fadeTo('slow', 1);
         }
@@ -1179,7 +1187,7 @@ function active_pane(pane){
         }
 
     }
-	pane.attr('width', 'hide');
+    pane.attr('width', 'hide');
     pane.removeClass('hide-on-small-only');   
     pane.animate({width:'show'}, 350, function(){
     });  
@@ -1408,43 +1416,40 @@ function remove_pref(){
     localStorage.setItem(pref_type, JSON.stringify(preferences));
 }
 
-function add_pref(event){
-    if (event.keyCode == 13) {
-        var pref_type = this.parentNode.previousElementSibling.id;
-        var preferences = JSON.parse(localStorage.getItem(pref_type)) || {};
-        if(this.value != ''){
-            var term = this.value;
-            this.value = '';
-            var base_url = 'https://api.seatgeek.com/2/performers?';
-            var params = {
-                'client_id': 'NDA0ODEwNnwxNDUxNTIwNTY1',
-                'aid': 11799,
-                'q': term,
-                'taxonomies.name': ['concert', 'music_festival'],
-                'per_page': 20,
-                'format': 'json',
-            }
-            var url = base_url + $.param(params, true);
-            $.ajax({
-                url: url,
-                timeout: 10000,
-                dataType: 'jsonp',
-                cache: true,
-                success : function(data) {
-                    var exact_match = data.performers.find(function(el){
-                        return el.name.toLowerCase() == term.toLowerCase();
-                    });
-                    if(exact_match){
-                        data.performers = [exact_match];
-                    }
-                    var artist = data.performers[0]
-                    preferences[artist.id] = {'id': artist.id, 'name': artist.name};
-                    localStorage.setItem(pref_type, JSON.stringify(preferences));
-                    load_preferences();
-                },
-            });
-        }
+function add_pref(pref_type, value){
+    if(value == null || value == ''){
+        return;
     }
+    var term = value;
+    var base_url = 'https://api.seatgeek.com/2/performers?';
+    var params = {
+        'client_id': 'NDA0ODEwNnwxNDUxNTIwNTY1',
+        'aid': 11799,
+        'q': term,
+        'taxonomies.name': ['concert', 'music_festival'],
+        'per_page': 20,
+        'format': 'json',
+    }
+    var url = base_url + $.param(params, true);
+    $.ajax({
+        url: url,
+        timeout: 10000,
+        cache: true,
+        pref_type: pref_type,
+        success : function(data) {
+            var exact_match = data.performers.find(function(el){
+                return el.name.toLowerCase() == term.toLowerCase();
+            });
+            if(exact_match){
+                data.performers = [exact_match];
+            }
+            var artist = data.performers[0]
+            var preferences = JSON.parse(localStorage.getItem(this.pref_type)) || {};
+            preferences[artist.id] = {'id': artist.id, 'name': artist.name};
+            localStorage.setItem(this.pref_type, JSON.stringify(preferences));
+            load_preferences();
+        },
+    });
 }
 
 function delete_pref(pref_type, pref){
@@ -1591,7 +1596,7 @@ function get_official_ticket_url(ticket_url){
         type: 'GET',
         dataType: 'text',
         success: function(data) {
-		  var s = data.split('Official Box Office');
+          var s = data.split('Official Box Office');
           if(s.length <= 1){
               return;
           }
@@ -1917,4 +1922,55 @@ function venue_events(venue_id, el){
             $('#venue-listen').fadeIn();
         },
     });
+}
+
+
+function facebook_init(){
+    window.fbAsyncInit = function() {
+        FB.init({
+            appId      : '1696944990518859',
+            xfbml      : true,
+            version    : 'v2.7'
+        });
+        $('#facebook-import').show();
+    };
+    (function(d, s, id){
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) {return;}
+        js = d.createElement(s); js.id = id;
+        js.src = "//connect.facebook.net/en_US/sdk.js";
+        fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));
+}
+function facebook_login(){
+    FB.getLoginStatus(function(response) {
+        if (response.status === 'connected') {
+            console.log('Logged in.');
+            facebook_get_music();
+        }
+        else {
+            FB.login(function(response) {
+                facebook_get_music();
+            }, {scope: ''});
+        }
+    });
+}
+function facebook_get_music(){
+    FB.api(
+        '/me/music',
+        'get',
+        {'limit': 800},
+        function (response) {
+            if (response && !response.error) {
+                console.log(response);
+                for(var i=0; i<response.data.length; i++){
+                    var artist = response.data[i];
+                    add_pref('liked_artists', artist.name);
+                }
+            }else{
+                console.log(response);
+                Materialize.toast("Error importing from Facebook", 5000);
+            }
+        }
+    );
 }
