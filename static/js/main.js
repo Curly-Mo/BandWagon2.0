@@ -351,6 +351,11 @@ function get_events(no_recommendations){
                     $(this).text('Retrying...');
                 }).fadeTo(500, 1);
                 $.ajax(this);
+            }else if(this.passthrough == null){
+                this.passthrough = true;
+                this.url = passthrough(this.url);
+                console.log(this);
+                $.ajax(this);
             }else{
                 console.log(response);
                 console.log(status);
@@ -362,6 +367,14 @@ function get_events(no_recommendations){
             }
         },
     });
+}
+
+function passthrough(url){
+    var base_url = 'passthrough?';
+    var params = {
+        'url': url,
+    }
+    return base_url +  $.param(params, true);
 }
 
 function shuffle(o){

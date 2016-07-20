@@ -4,6 +4,8 @@ import glob
 import jinja2
 import webapp2
 
+import views
+
 
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')),
@@ -49,5 +51,6 @@ class Index(webapp2.RequestHandler):
 
 app = webapp2.WSGIApplication([
     ('/', MainPage),
+    ('/passthrough', views.Passthrough),
     #('/([^\.]*/?)', Index),
 ], debug=True)
