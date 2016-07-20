@@ -321,6 +321,21 @@ function get_events(no_recommendations){
                         }).fadeTo(500, 1);
                         this.tryCount--;
                     }else{
+                        if(response.meta.geolocation.display_name == null){
+                            $('#loader > .preloader-wrapper').hide();
+                            $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
+                                $('#loading-message').html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
+                                    +   "I don't recognize '" + window.settings.custom_location +"'<br>"
+                                    +   "Please try typing a different location."
+                                );
+                                setTimeout(function(){
+                                    $('.button-collapse').sideNav('show');
+                                    $('#loader').hide();
+                                    $('#custom_location').select();
+                                }, 4000);
+                            }).fadeTo(500, 1);
+                            return;
+                        }
                         if(this.tryCount <= 1){
                             $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
                                 $(this).text('Increasing search radius...');
