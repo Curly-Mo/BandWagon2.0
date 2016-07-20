@@ -285,6 +285,7 @@ nav .brand-logo.center {
 
 #progress-container {
     z-index: 999;
+    background-color: #14181B;
 }
 /* Progress bar*/
 #progress {
