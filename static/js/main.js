@@ -1951,7 +1951,7 @@ function facebook_login(){
         else {
             FB.login(function(response) {
                 facebook_get_music();
-            }, {scope: ''});
+            }, {scope: 'user_likes'});
         }
     });
 }
