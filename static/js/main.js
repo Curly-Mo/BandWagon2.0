@@ -1,5 +1,15 @@
 "use strict";
-window.addEventListener("load", init, false);
+//window.addEventListener("load", init, false);
+var settings = {
+    'autoplay': false,
+    'geolocation': false,
+    'startdate': 0,
+    'enddate': moment().local().startOf('day').add(1, 'months').diff(moment().local().startOf('day'), 'days'),
+    'distance': '20mi',
+    'custom_location_enable': false,
+    'custom_location': '',
+}
+init();
 function init(){
     if(navigator.userAgent.toLowerCase().indexOf('firefox') > -1 && navigator.appVersion.toLowerCase().indexOf("win") > -1){
         Materialize.toast("This page does not run well in Firefox. Use Chrome for a better experience.", 5000)
@@ -9,6 +19,11 @@ function init(){
        navigator.userAgent.toLowerCase().indexOf('edge/') > -1){
         Materialize.toast("This page does not run well in Internet Exporer. I recommend Chrome for the best experience.", 5000)
     }
+    var new_settings = localStorage.getItem('settings');
+    if(new_settings){
+        window.settings = JSON.parse(new_settings);
+    }
+    refresh_playlist();
 
     // Initialize collapse button
     $('.button-collapse').sideNav({
@@ -21,7 +36,6 @@ function init(){
     $('#prev-button').on('tap click', prev);
     $('#next-button').on('tap click', next);
     init_settings();
-    refresh_playlist();
     init_volume();
     init_audio();
     init_track_actions();
@@ -52,15 +66,6 @@ var venues= {};
 var tracks = {};
 var promises = [];
 var coords;
-var settings = {
-    'autoplay': false,
-    'geolocation': false,
-    'startdate': 0,
-    'enddate': moment().local().startOf('day').add(1, 'months').diff(moment().local().startOf('day'), 'days'),
-    'distance': '20mi',
-    'custom_location_enable': false,
-    'custom_location': '',
-}
 
 function init_audio(){
     audio = new Audio();
@@ -321,7 +326,7 @@ function get_events(no_recommendations){
                                 $(this).text('Increasing search radius...');
                             }).fadeTo(500, 1);
                         }
-                        params.range = parseFloat(params.range.slice(0,-2)) + 1 + 'mi';
+                        params.range = parseFloat(params.range.slice(0,-2)) + 2 + 'mi';
                         //params['datetime_local.lte'] = moment(params['datetime_local.lte']).add(1, 'days').format('YYYY-MM-DD'),
                     }
                     this.url = base_url + $.param(params, true);
@@ -330,10 +335,12 @@ function get_events(no_recommendations){
                     $.ajax(this);
                 }else{
                     $('#loader > .preloader-wrapper').hide();
-                    $('#loading-message').html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
-                        +   "No concerts found in: " + response.meta.geolocation.display_name +"<br>"
-                        +   "Is this not where you are? Try enabling improved location accuracy in <i class='mdi-navigation-menu'></i>Settings."
-                    );
+                    $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
+                        $(this).html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
+                            +   "No concerts found in: " + response.meta.geolocation.display_name +"<br>"
+                            +   "Is this not where you are? Try enabling improved location accuracy in <i class='mdi-navigation-menu'></i>Settings."
+                        );
+                    }).fadeTo(200, 1);
                 }
             }
         },
@@ -805,10 +812,10 @@ function init_settings(){
 }
 
 function load_settings(){
-    var new_settings = localStorage.getItem('settings');
-    if(new_settings){
-        window.settings = JSON.parse(new_settings);
-    }
+    //var new_settings = localStorage.getItem('settings');
+    //if(new_settings){
+    //    window.settings = JSON.parse(new_settings);
+    //}
     $('#datestart').data('dateRangePicker').setDateRange(
         moment().local().startOf('day').add(window.settings.startdate, 'days').format(),
         moment().local().startOf('day').add(window.settings.enddate, 'days').format()
