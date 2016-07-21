@@ -62,14 +62,19 @@
     </div>
     <div class="pane right hide-on-small-only hide" id="artist-pane">
         <h4 id="artist-title" class="center flow-text"></h4>
-        <a id="artist-listen" class="right" href="javascript:void(0)">♫Listen to Artist♫</a>
+        <div class="heart-wrapper" title="Like this Artist">
+          <input id="artist-heart" type="checkbox" />
+          <label for="artist-heart" aria-label="like">❤</label>
+        </div>
+        <br>
+        <a id="artist-listen" class="left" href="javascript:void(0)">♫Listen to Artist♫</a>
         <div style="clear: both;"></div>
         <div class="collection z-depth-2" id="artist-events"></div>
         <div id="artist-info"></div>
     </div>
     <div class="pane right hide-on-small-only hide" id="venue-pane">
         <h4 id="venue-title" class="center flow-text"></h4>
-        <a id="venue-listen" class="right" href="javascript:void(0)">♫Listen to Venue♫</a>
+        <a id="venue-listen" class="left" href="javascript:void(0)">♫Listen to Venue♫</a>
         <div id="venue-info" class="center"></div>
         <div class="collection z-depth-2" id="venue-events"></div>
     </div>

@@ -26,6 +26,9 @@ handlers:
   static_dir: static/materialize
   http_headers:
     Vary: Accept-Encoding
+- url: /privacy_policy.txt
+  static_files: static/privacy_policy.txt
+  upload: static/privacy_policy.txt
 - url: /.*
   script: main.app
 

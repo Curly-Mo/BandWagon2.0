@@ -54,6 +54,13 @@ function init(){
     $('#artist-listen').on('tap click', function(e){
         play_artists([this.getAttribute('data-id')]);
     });
+    $('#artist-heart').on('change', function(e){
+        if(this.checked){
+            add_pref('liked_artists', this.getAttribute('data-id'));
+        }else{
+            remove_pref('liked_artists', this.getAttribute('data-id'));
+        }
+    });
 }
 
 var audioCtx;
@@ -1442,21 +1449,28 @@ function load_preferences(){
                     'data-id': pref[keys[k]].id,
                 }).append(close)
             );
-            close.on('click', remove_pref);
+            close.on('click', function(){
+                remove_pref($(this).parent().parent().attr('id'), this.parentNode.getAttribute('data-id'));
+            });
         }
     }
 }
 
-function remove_pref(){
-    var pref = this.parentNode.getAttribute('data-id');
-    var pref_type = $(this).parent().parent().attr('id');
+function remove_pref(pref_type, value){
     var preferences = JSON.parse(localStorage.getItem(pref_type)) || {};
-    delete preferences[pref]
+    delete preferences[value]
     localStorage.setItem(pref_type, JSON.stringify(preferences));
 }
 
 function add_pref(pref_type, value){
     if(value == null || value == ''){
+        return;
+    }
+    if(window.artists[value]){
+        var preferences = JSON.parse(localStorage.getItem(pref_type)) || {};
+        preferences[value] = {'id': value, 'name': window.artists[value].name};
+        localStorage.setItem(pref_type, JSON.stringify(preferences));
+        load_preferences();
         return;
     }
     var term = value;
@@ -1489,6 +1503,11 @@ function add_pref(pref_type, value){
             load_preferences();
         },
     });
+    try{
+        ga('send', 'event', pref_type, value);
+    }catch(e){
+        console.log(e);
+    }
 }
 
 function delete_pref(pref_type, pref){
@@ -1819,6 +1838,16 @@ function set_artist_info(artist_id){
     $('#artist-title').clearQueue().stop().fadeTo('medium', 0.1, function() {
         $(this).text(artist.name);
     }).fadeTo('medium', 1);
+    // Like button
+    $('#artist-heart').attr({
+        'data-id': artist_id,
+    });
+    var liked_artists = JSON.parse(localStorage.getItem('liked_artists'));
+    if(artist_id in liked_artists){
+        $('#artist-heart').prop('checked', true);
+    }else{
+        $('#artist-heart').prop('checked', false);
+    }
     $('#artist-info').empty();
     $('#artist-listen').hide();
     lastfm_artist_info(artist_id, $('#artist-info'));
