@@ -245,7 +245,7 @@ function clear_modal(){
     $('#loader > .preloader-wrapper').show();
 }
 
-function get_events(no_recommendations){
+function get_events(no_recommendations, performers){
     var base_url = 'https://api.seatgeek.com/2/';
     var params = {
         aid: 11799,
@@ -291,7 +291,21 @@ function get_events(no_recommendations){
         params['performers.id'] = artist_ids;
     }else{
         base_url += 'events?';
+        // If performers given, only get events from those performers
+        if(performers != null){
+            var artist_ids = jQuery.map(performers, function(performer) {
+                if(performer.id != null && !(performer.id in window.artists)){
+                    return performer.id;
+                }
+            });
+            console.log(artist_ids);
+            if(artist_ids == null || artist_ids.length == 0){
+                return;
+            }
+            params['performers.id'] = artist_ids;
+        }
     }
+
 
     var url = base_url + $.param(params, true);
     //console.log(url);
@@ -451,9 +465,18 @@ function parse_events(events, recommendations){
         load_tracks(create_track_list());
         promises.length = 0;
     });
-    if(events.length < 5 && recommendations != null){
-        console.log('not enough recommendations, adding all events');
-        get_events(true);
+    if(recommendations != null){
+        if(events.length < 5){
+            console.log('not enough recommendations, adding all events');
+            get_events(true);
+        }else {
+            var liked_artists = JSON.parse(localStorage.getItem('liked_artists'));
+            if(liked_artists != null){
+                console.log(liked_artists);
+                console.log('grab liked artist events, in case recommendations missed them');
+                get_events(true, liked_artists);
+            }
+        }
     }
 }
 
@@ -504,6 +527,7 @@ function load_tracks(track_list){
     if(isMobile()){
         var track_limit = 25;
     }
+    var liked_artists = JSON.parse(localStorage.getItem('liked_artists')) || {};
     for(var i = 0; i < Math.min(track_list.length, track_limit); i++) {
         var track = track_list[i];
         var playlist_item = $('<li>').attr({'class': 'collection-item avatar playlist-item', 'data-id': track.id})
@@ -511,7 +535,15 @@ function load_tracks(track_list){
                 .append($('<span>').attr('class', 'title').html(window.artists[track.artist_id].name))
                 .append($('<p>').html(track.title))
                 .append($('<a>').addClass('secondary-content waves-effect waves-light btn').append($('<i>').addClass('material-icons').text('info_outline')));
-        $('#playlist').append(playlist_item);
+        if(track.artist_id in liked_artists){
+            var pos = Math.min(rand_int(0, 6), $('.playlist-item').length-1);
+            playlist_item.insertBefore($('.playlist-item')[pos]);
+            delete liked_artists[track.artist_id];
+            console.log('Prioritizing track:');
+            console.log(playlist_item);
+        }else{
+            $('#playlist').append(playlist_item);
+        }
     }
     $('#playlist').clearQueue().stop().css('height', '').slideDown(Math.min(track_list.length, track_limit)*150);
     $('.playlist-item').on('tap click', function(e){
@@ -1374,18 +1406,18 @@ function show_track_actions(){
     if(track_actions.length == 0){
         track_actions = $('<li>').attr('id', 'track-actions')
             .append($('<a>', {
-                    'id': 'thumb_up',
-                    'class': 'waves-effect waves-light btn',
-                }).append($('<i>', {
-                    'class': 'material-icons',
-                    'text': 'thumb_up',
-                })))
-            .append($('<a>', {
                     'id': 'thumb_down',
                     'class': 'waves-effect waves-light btn',
                 }).append($('<i>', {
                     'class': 'material-icons',
                     'text': 'thumb_down',
+                })))
+            .append($('<a>', {
+                    'id': 'thumb_up',
+                    'class': 'waves-effect waves-light btn',
+                }).append($('<i>', {
+                    'class': 'material-icons',
+                    'text': 'thumb_up',
                 })));
     }
     var pref_types = [
@@ -1555,7 +1587,7 @@ function apply_track_preferences(tracks){
             // Move liked artists close to the top of playlist
             if(track.artist_id in liked_artists){
                 tracks.splice(i, 1);
-                tracks.splice(rand_int(0, 8), 0, track); 
+                tracks.splice(rand_int(0, 6), 0, track); 
                 delete liked_artists[track.artist_id];
                 console.log('Prioritizing track:');
                 console.log(track);
