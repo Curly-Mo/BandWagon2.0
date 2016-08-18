@@ -63,33 +63,33 @@ function init(){
     });
 }
 
-var audioCtx;
-var audio;
-var audio_source;
-var gain_node;
-var events = {};
-var artists = {};
-var venues= {};
-var tracks = {};
-var promises = [];
-var coords;
+window.audioCtx;
+window.audio;
+window.audio_source;
+window.gain_node;
+window.events = {};
+window.artists = {};
+window.venues= {};
+window.tracks = {};
+window.promises = [];
+window.coords;
 
 function init_audio(){
-    audio = new Audio();
-    audio.crossOrigin = "anonymous";
+    window.audio = new Audio();
+    window.audio.crossOrigin = "anonymous";
     if(window.AudioContext || window.webkitAudioContext){
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        audio_source = audioCtx.createMediaElementSource(audio);
-        gain_node = audioCtx.createGain();
-        audio_source.connect(gain_node);
-        gain_node.connect(audioCtx.destination);
+        window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        window.audio_source = audioCtx.createMediaElementSource(audio);
+        window.gain_node = audioCtx.createGain();
+        window.audio_source.connect(gain_node);
+        window.gain_node.connect(audioCtx.destination);
         var volume = document.querySelector('#volume-slider');
-        gain_node.gain.value = volume.noUiSlider.get()/100.0;
+        window.gain_node.gain.value = volume.noUiSlider.get()/100.0;
         volume.noUiSlider.on('update', function(){
             gain_node.gain.value = volume.noUiSlider.get()/100.0;
         });
     }
-    audio.addEventListener('ended', next);
+    window.audio.addEventListener('ended', next);
     $('body').append(audio);
 }
 
