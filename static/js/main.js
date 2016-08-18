@@ -575,7 +575,7 @@ function load_tracks(track_list){
             more.slideUp('medium');
         });
     }
-    if(!isMobile() && window.settings.autoplay && audio.paused){
+    if((!isMobile() || isNativeApp()) && window.settings.autoplay && audio.paused){
         $('.playlist-item').first().trigger('click');
     }
 //    }else if($('#play').html() != 'pause'){
@@ -763,6 +763,12 @@ function isMobile(){
         return true;
     }
     return false;
+}
+
+function isNativeApp(){
+    console.log(navigator.userAgent);
+    console.log(/BandWagon\/[0-9\.]+$/.test(navigator.userAgent));
+    return /BandWagon\/[0-9\.]+$/.test(navigator.userAgent);
 }
 
 function init_settings(){
