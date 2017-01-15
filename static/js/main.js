@@ -114,6 +114,7 @@ function play(){
             }).fadeTo('fast', 1);
         }
         if(window.Android){
+          console.log('Android Webview play()');
           Android.play();
         }
     }
@@ -127,6 +128,7 @@ function pause(){
             e.html('play_arrow');
         }).fadeTo('fast', 1);
         if(window.Android){
+          console.log('Android Webview pause()');
           Android.pause();
         }
     }
@@ -152,6 +154,7 @@ function next(){
         curr.nextAll('.playlist-item:first').click();
     }
     if(window.Android){
+      console.log('Android Webview next()');
       Android.next();
     }
 }
@@ -160,6 +163,7 @@ function prev(){
     var curr = $('.playlist-item.active')
     curr.prevAll('.playlist-item:first').click();
     if(window.Android){
+      console.log('Android Webview prev()');
         Android.prev();
     }
 }
