@@ -95,16 +95,27 @@ function init_audio(){
 
 var first_play = true;
 function play(){
-    if(first_play){
-        init_progress();
-        first_play = false;
-    }
-    audio.play();
-    var e = $('#play');
-    if(e.html() == 'play_arrow'){
-        e.stop().fadeTo('fast', 0.1, function() {
-            e.html('pause');
-        }).fadeTo('fast', 1);
+    if(!document.querySelector('.playlist-item.active')){
+        if($('.playlist-item').length == 0){
+            window.settings.autoplay = true;
+        }else{
+            $('.playlist-item').first().trigger('click');
+        }
+    }else{
+        if(first_play){
+            init_progress();
+            first_play = false;
+        }
+        audio.play();
+        var e = $('#play');
+        if(e.html() == 'play_arrow'){
+            e.stop().fadeTo('fast', 0.1, function() {
+                e.html('pause');
+            }).fadeTo('fast', 1);
+        }
+        if(window.Android){
+          Android.play();
+        }
     }
 }
 
@@ -113,8 +124,11 @@ function pause(){
     var e = $('#play');
     if(e.html() == 'pause'){
         e.stop().fadeTo('fast', 0.1, function() {
-            e.html('play');
+            e.html('play_arrow');
         }).fadeTo('fast', 1);
+        if(window.Android){
+          Android.pause();
+        }
     }
 }
 
@@ -124,23 +138,9 @@ function play_toggle(){
     $('#start-listening').attr('onclick', '');
     var e = $('#play');
     if(e.html() == 'play_arrow'){
-        if(!document.querySelector('.playlist-item.active')){
-            if($('.playlist-item').length == 0){
-                window.settings.autoplay = true;
-            }else{
-                $('.playlist-item').first().trigger('click');
-            }
-        }else{
-            audio.play();
-        }
-        e.stop().stop(true, true).fadeTo('fast', 0.1, function() {
-            e.html('pause');
-        }).fadeTo('fast', 1);
+        play();
     }else{
-        audio.pause();
-        e.stop().stop(true, true).fadeTo('fast', 0.1, function() {
-            e.html('play_arrow');
-        }).fadeTo('fast', 1);
+        pause();
     }
 }
 
@@ -151,11 +151,17 @@ function next(){
     }else{
         curr.nextAll('.playlist-item:first').click();
     }
+    if(window.Android){
+      Android.next();
+    }
 }
 
 function prev(){
     var curr = $('.playlist-item.active')
     curr.prevAll('.playlist-item:first').click();
+    if(window.Android){
+        Android.prev();
+    }
 }
 
 function init_volume(){
@@ -598,8 +604,8 @@ function play_item(){
         return;
     }
     $('.playlist-item.active').removeClass('active');
-    play_track(this.getAttribute('data-id'));
     this.classList.add('active');
+    play_track(this.getAttribute('data-id'));
     $('#track-actions').stop(true, true).hide();//.slideUp(300);
     // Scroll to top
     var self = this;
@@ -1769,7 +1775,7 @@ function search_artists(term){
         tryCount : 0,
         retryLimit : 1,
         timeout: 10000,
-        dataType: 'jsonp',
+        dataType: 'json',
         cache: true,
         success : function(data) {
             window.search_semaphore -= 1;
@@ -1825,7 +1831,7 @@ function search_venues(term){
         url: url,
         tryCount : 0,
         timeout: 10000,
-        dataType: 'jsonp',
+        dataType: 'json',
         cache: true,
         success : function(data) {
             if(data.venues.length == 0 && this.tryCount == 0){
@@ -1944,7 +1950,7 @@ function artist_events(artist_id, el){
     $.ajax({
         url: url,
         timeout: 20000,
-        dataType: 'jsonp',
+        dataType: 'json',
         cache: true,
         success: function(response){
             if(response.events.length <= 0){
@@ -1995,7 +2001,7 @@ function venue_events(venue_id, el){
     $.ajax({
         url: url,
         timeout: 20000,
-        dataType: 'jsonp',
+        dataType: 'json',
         cache: true,
         success: function(response){
             window.venues[venue_id].events = response.events;
