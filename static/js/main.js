@@ -928,9 +928,13 @@ function update_settings(){
     if(JSON.stringify(window.settings) !== JSON.stringify(new_settings)){
         //console.log(window.settings);
         //console.log(new_settings);
+        var old_diff = JSON.stringify(Object.assign({}, window.settings, {'autoplay': undefined}));
+        var new_diff = JSON.stringify(Object.assign({}, new_settings, {'autoplay': undefined}));
         window.settings = new_settings;
         localStorage['settings'] = JSON.stringify(new_settings);
-        refresh_playlist();
+        if(old_diff !== new_diff){
+            refresh_playlist();
+        }
     }
 }
 
