@@ -594,6 +594,10 @@ function load_tracks(track_list){
 //        document.querySelector('#waveform').setAttribute('src', track.waveform_url);
 //    }
     //init_dismissables();
+    if(window.Android){
+      console.log('Android Webview onload()');
+      Android.onload();
+    }
 }
 
 function create_track_list(){
