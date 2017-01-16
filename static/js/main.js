@@ -341,6 +341,9 @@ function get_events(no_recommendations, performers){
                 //$('#loader').closeModal({out_duration: 0});
                 parse_events(response.events, response.recommendations);
                 $('#custom_location').attr("placeholder", response.meta.geolocation.display_name);
+            }else if(performers != null){
+                console.log(this);
+                console.log('no exact matches, nothing to add');
             }else{
                 this.tryCount++;
                 if(this.tryCount <= 10){
