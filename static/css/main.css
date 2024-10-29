@@ -432,7 +432,7 @@ nav .brand-logo.center {
 }
 .marquee {
   white-space: nowrap;
-  overflow: scroll;
+  overflow: hidden;
 }
 
 #event-artists {
