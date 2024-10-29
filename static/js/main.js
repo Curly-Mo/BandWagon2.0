@@ -1182,11 +1182,20 @@ function lastfm_artist_info(artist_id, el){
                 musicbrainz_fetch_artist_info(mb_search_artist.id));
             }
             mb_future.then((mb_artist_info) => {
-              if(mb_artist_info.best_image != null && mb_artist_info.best_image != ''){
-                var slider = $('<div>').addClass('center').css({'width': '90%', 'margin-top': '8px'});
-                var image = $('<img>').css({'max-width': '100%', 'max-height': '100%'});
-                image.attr('src', mb_artist_info.best_image);
-                body.append(slider.append(image));
+              if(mb_artist_info.images != null && mb_artist_info.images.length > 0){
+                var slider = $('<div>').addClass('center').css({'width': '100%', 'margin-top': '1.75em'});
+                for(var image_url of mb_artist_info.images) {
+                  if (slider.children().length >= 3) {
+                    body.append(slider);
+                    slider = $('<div>').addClass('center').css({'width': '100%', 'margin-top': '1em'});
+                  }
+                  var num_row_imgs = Math.min(mb_artist_info.images.length, 3);
+                  var max_width = 100/num_row_imgs - num_row_imgs;
+                  var image = $('<img>').css({'max-width': `${max_width}%`, 'max-height': '50vh', 'margin': '0 1%'});
+                  image.attr('src', image_url);
+                  slider.append(image);
+                };
+                body.append(slider);
               }else{
                 body.append($('<br>'));
               }
@@ -1277,38 +1286,42 @@ function musicbrainz_fetch_artist_info(mbid){
   })
   .then((response) => response.json())
   .then((mb_artist_info) => {
-    return musicbrainz_find_image(mb_artist_info).then(image_url => {
-      mb_artist_info['best_image'] = image_url
+    return musicbrainz_find_images(mb_artist_info).then(image_urls => {
+      mb_artist_info['images'] = image_urls
       return mb_artist_info;
     });
   });
 }
 
-function musicbrainz_find_image(mb_artist_info){
-  var image_url = null;
+function musicbrainz_find_images(mb_artist_info){
+  var image_urls = [];
   for ( const [key, relation] of Object.entries(mb_artist_info.relations) ) {
     if (relation.type === 'image') {
-      if (image_url != null && !image_url.includes("twimg.com")) {
-        continue;
-      }
-      image_url = relation.url.resource;
+      var image_url = relation.url.resource;
       if (image_url.startsWith('https://commons.wikimedia.org/wiki/File:')) {
-        var filename = image_url.substring(image_url.lastindexof('/') + 1);
-        image_url = 'https://commons.wikimedia.org/wiki/special:redirect/file/' + filename;
+        var filename = image_url.substring(image_url.lastIndexOf('/') + 1);
+        image_url = 'https://commons.wikimedia.org/wiki/special:redirect/file/' + filename.replaceAll(" ", "_");
       }
+      image_urls.push(image_url);
     }
     if (relation.type === 'wikidata') {
       var wikidata_url = relation.url.resource;
       var wikidata_entity_id = wikidata_url.substring(wikidata_url.lastIndexOf('/') + 1);
     }
   }
-  if (image_url != null && !image_url.includes("twimg.com")) {
-    return Promise.resolve(image_url);
-  }
-  return wikidata_fetch_images(wikidata_entity_id);
+  return wikidata_fetch_images(wikidata_entity_id)
+    .then(wiki_images => {
+      var merged = wiki_images.concat(image_urls);
+      var filtered = merged.filter((url) => !url.toLowerCase().includes("signature"));
+      var deduped = filtered.filter((item, index) => filtered.indexOf(item) === index);
+      return deduped;
+    });
 }
 
 function wikidata_fetch_images(entity_id){
+  if(typeof entity_id === 'undefined') {
+    return Promise.resolve([]);
+  }
   var wikidata_api_url = 'https://www.wikidata.org/w/api.php';
   var params = {
     'action': 'query',
@@ -1323,10 +1336,22 @@ function wikidata_fetch_images(entity_id){
   })
   .then((response) => response.json())
   .then((wiki_artist_info) => {
+    var image_urls = [];
     for ( const [key, entity] of Object.entries(wiki_artist_info.query.pages) ) {
       var filename = entity.pageprops.page_image_free;
-      return 'https://commons.wikimedia.org/wiki/special:redirect/file/' + filename;
+      if (typeof filename === "undefined") {
+        continue;
+      }
+      image_urls.push('https://commons.wikimedia.org/wiki/special:redirect/file/File:' + filename);
+      if (typeof entity.images === "undefined") {
+        continue;
+      }
+      for ( const [k, image] of Object.entries(entity.images) ) {
+        var img_filename = image.title.replaceAll(" ", "_");
+        image_urls.push('https://commons.wikimedia.org/wiki/special:redirect/file/' + img_filename);
+      }
     }
+    return image_urls;
   });
 }
 
