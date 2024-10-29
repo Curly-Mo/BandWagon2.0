@@ -481,6 +481,10 @@ function parse_events(events, recommendations){
 
 
 function soundcloud_init(){
+    var soundcloud_auth = JSON.parse(localStorage.getItem('soundcloud_auth')) || {};
+    if (soundcloud_auth['expires_at'] && soundcloud_auth['expires_at'] < Date.now()) {
+      return Promise.resolve(soundcloud_auth);
+    }
     var url = 'https://secure.soundcloud.com/oauth/token';
     var headers = {
       'accept': 'application/json; charset=utf-8',
@@ -497,19 +501,21 @@ function soundcloud_init(){
       data: body,
       headers: headers,
       success : function(response) {
-        window.soundcloud_auth = response;
+        response['expires_at'] = Date.now() + (response.expires_in * 1000)
+        localStorage['soundcloud_auth'] = JSON.stringify(response);
         setTimeout(soundcloud_init, response.expires_in * 1000);
       },
     });
 }
 
 function soundcloud_fetch_tracks(artist, limit, event_id){
+  var soundcloud_auth = JSON.parse(localStorage.getItem('soundcloud_auth')) || {};
   return $.ajax({
     url: soundcloud_url(artist.name, limit),
     dataType: 'json',
     cache: true,
     headers: {
-      'Authorization': `${window.soundcloud_auth.token_type} ${window.soundcloud_auth.access_token}`,
+      'Authorization': `${soundcloud_auth.token_type} ${soundcloud_auth.access_token}`,
     },
     beforeSend: function() {
       $('#loader').slideDown();
@@ -538,10 +544,11 @@ function soundcloud_url(artist, limit){
 }
 
 function soundcloud_fetch_stream(track_id){
+  var soundcloud_auth = JSON.parse(localStorage.getItem('soundcloud_auth')) || {};
   var url = tracks[track_id].stream_url;
   return fetch(url, {
       headers: {
-        'Authorization': `${window.soundcloud_auth.token_type} ${window.soundcloud_auth.access_token}`,
+        'Authorization': `${soundcloud_auth.token_type} ${soundcloud_auth.access_token}`,
       },
     })
     .then((response) => response.blob());
