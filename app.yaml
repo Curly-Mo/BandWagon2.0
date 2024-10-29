@@ -1,8 +1,4 @@
-application: wag-on
-version: 2
-runtime: python27
-api_version: 1
-threadsafe: true
+runtime: python312
 
 default_expiration: "180d 0h"
 
@@ -31,9 +27,3 @@ handlers:
   upload: static/privacy_policy.txt
 - url: /.*
   script: main.app
-
-libraries:
-- name: webapp2
-  version: latest
-- name: jinja2
-  version: latest

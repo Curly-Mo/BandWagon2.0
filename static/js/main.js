@@ -9,16 +9,16 @@ var settings = {
     'custom_location_enable': false,
     'custom_location': '',
 }
-init();
+soundcloud_init().then(init);
 function init(){
-    if(navigator.userAgent.toLowerCase().indexOf('firefox') > -1 && navigator.appVersion.toLowerCase().indexOf("win") > -1){
-        Materialize.toast("This page does not run well in Firefox. Use Chrome for a better experience.", 5000)
-    }
-    if(navigator.userAgent.toLowerCase().indexOf('msie ') > -1 ||
-       navigator.userAgent.toLowerCase().indexOf('trident/') >-1 ||
-       navigator.userAgent.toLowerCase().indexOf('edge/') > -1){
-        Materialize.toast("This page does not run well in Internet Exporer. I recommend Chrome for the best experience.", 5000)
-    }
+    // if(navigator.userAgent.toLowerCase().indexOf('firefox') > -1 && navigator.appVersion.toLowerCase().indexOf("win") > -1){
+    //     Materialize.toast("This page does not run well in Firefox. Use Chrome for a better experience.", 5000)
+    // }
+    // if(navigator.userAgent.toLowerCase().indexOf('msie ') > -1 ||
+    //    navigator.userAgent.toLowerCase().indexOf('trident/') >-1 ||
+    //    navigator.userAgent.toLowerCase().indexOf('edge/') > -1){
+    //     Materialize.toast("This page does not run well in Internet Exporer. I recommend Chrome for the best experience.", 5000)
+    // }
     var new_settings = localStorage.getItem('settings');
     if(new_settings){
         window.settings = JSON.parse(new_settings);
@@ -294,7 +294,7 @@ function get_events(no_recommendations, performers){
         params['geoip'] = true;
     }
 
-    var liked_artists = JSON.parse(localStorage.getItem('liked_artists'));
+    var liked_artists = JSON.parse(localStorage.getItem('liked_artists')) || {};
     if(liked_artists !=null && Object.keys(liked_artists).length > 0 && no_recommendations != true){
         base_url += 'recommendations?';
         var artist_ids = jQuery.map(liked_artists, function(performer) { if(performer.id != null){return performer.id;}});
@@ -445,21 +445,7 @@ function parse_events(events, recommendations){
                     var performer = event.performers[j];
                     window.artists[performer.id] = performer;
                     promises.push(
-                        $.ajax({
-                            url: soundcloud_url(performer.name, 3),
-                            dataType: 'json',
-                            cache: true,
-                            beforeSend: function() {
-                                $('#loader').slideDown();
-                                $('#loader > .preloader-wrapper').show();
-                                $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
-                                    $(this).text('Loading tracks...');
-                                }).fadeTo(500, 1);
-                            },
-                            success: function(response){
-                                parse_tracks(response, event.id, performer.id);
-                            }
-                        })
+                      soundcloud_fetch_tracks(performer, 3, event.id)
                     );
                 })(j);
             }
@@ -483,7 +469,7 @@ function parse_events(events, recommendations){
             console.log('not enough recommendations, adding all events');
             get_events(true);
         }else {
-            var liked_artists = JSON.parse(localStorage.getItem('liked_artists'));
+            var liked_artists = JSON.parse(localStorage.getItem('liked_artists')) || {};
             if(liked_artists != null){
                 console.log(liked_artists);
                 console.log('grab liked artist events, in case recommendations missed them');
@@ -493,10 +479,54 @@ function parse_events(events, recommendations){
     }
 }
 
+
+function soundcloud_init(){
+    var url = '//secure.soundcloud.com/oauth/token';
+    var headers = {
+      'accept': 'application/json; charset=utf-8',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${btoa('f1686e09dcc2a404eccb6f8473803687:892bd88dc9ec76015dc4620d6af9dc2b')}`,
+    }
+    var body = {
+      'grant_type': 'client_credentials',
+    }
+    return $.ajax({
+      url: url,
+      type: "POST",
+      timeout: 10000,
+      data: body,
+      headers: headers,
+      success : function(response) {
+        window.soundcloud_auth = response;
+        setTimeout(soundcloud_init, response.expires_in * 1000);
+      },
+    });
+}
+
+function soundcloud_fetch_tracks(artist, limit, event_id){
+  return $.ajax({
+    url: soundcloud_url(artist.name, limit),
+    dataType: 'json',
+    cache: true,
+    headers: {
+      'Authorization': `${window.soundcloud_auth.token_type} ${window.soundcloud_auth.access_token}`,
+    },
+    beforeSend: function() {
+      $('#loader').slideDown();
+      $('#loader > .preloader-wrapper').show();
+      $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
+        $(this).text('Loading tracks...');
+      }).fadeTo(500, 1);
+    },
+    success: function(response){
+      parse_tracks(response, event_id, artist.id);
+    }
+  });
+}
+
 function soundcloud_url(artist, limit){
     var base_url = '//api.soundcloud.com/tracks';
     var params = {
-        'client_id': 'f1686e09dcc2a404eccb6f8473803687',
         'order': 'hotness',
         'limit': limit,
         'q': artist,
@@ -507,14 +537,14 @@ function soundcloud_url(artist, limit){
     return url
 }
 
-function soundcloud_stream_url(track_id){
-    var base_url = tracks[track_id].stream_url;
-    var params = {
-        'client_id': 'f1686e09dcc2a404eccb6f8473803687',
-    }
-    var query_string = $.param(params, true);
-    var url = base_url + '?' + query_string;
-    return url
+function soundcloud_fetch_stream(track_id){
+  var url = tracks[track_id].stream_url;
+  return fetch(url, {
+      headers: {
+        'Authorization': `${window.soundcloud_auth.token_type} ${window.soundcloud_auth.access_token}`,
+      },
+    })
+    .then((response) => response.blob());
 }
 
 function parse_tracks(tracks, event_id, artist_id){
@@ -644,8 +674,10 @@ function play_track(track_id){
     //audio.pause();
     //audio.removeAttribute("src"); 
     ////
-    audio.src = soundcloud_stream_url(track_id)
-    play();
+    soundcloud_fetch_stream(track_id).then(function(response) {
+      audio.src = URL.createObjectURL(response);
+      play();
+    });
     document.querySelector('#waveform').setAttribute('src', tracks[track_id].waveform_url);
     var track = tracks[track_id];
     $('#now-playing').clearQueue().stop().fadeTo(900, 0.05, function() {
@@ -1067,7 +1099,7 @@ function set_event_info(event_id, artist_id){
         }
         $(this).collapsible();
     }).fadeTo('medium', 1);
-    get_official_ticket_url(event.url);
+    // get_official_ticket_url(event.url);
 }
 
 function lastfm_artist_info(artist_id, el){
@@ -1332,21 +1364,7 @@ function play_artists(artist_ids, event_id, venue_id){
         (function (i) {
             var performer = artists[artist_ids[i]];
             promises.push(
-                $.ajax({
-                    url: soundcloud_url(performer.name, tracks_per),
-                    dataType: 'json',
-                    cache: true,
-                    beforeSend: function() {
-                        $('#loader').slideDown();
-                        $('#loader > .preloader-wrapper').show();
-                        $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
-                            $(this).text('Loading tracks...');
-                        }).fadeTo(500, 1);
-                    },
-                    success: function(response){
-                        parse_tracks(response, performer.event_id, performer.id);
-                    }
-                })
+                soundcloud_fetch_tracks(performer, tracks_per, performer.event_id)
             );
         })(i);
     }
@@ -1643,7 +1661,7 @@ function rand_int(min, max){
 }
 
 function echonest_analyze(track_id){
-    var stream_url = soundcloud_stream_url(track_id);
+    var stream_url = tracks[track_id].stream_url;
     var apiKey = "8C0DI9VHHE8BZSPOP";
     var echonest_url = 'http://developer.echonest.com/api/v4/track/upload?';
     var params = {
@@ -1707,7 +1725,7 @@ function geo_from_address(address){
 }
 
 function get_official_ticket_url(ticket_url){
-    var url = '//cors-anywhere.herokuapp.com/' + ticket_url;
+    var url = ticket_url;
     var data = $.ajax({ 
         url: url,
         type: 'GET',
@@ -1901,7 +1919,7 @@ function set_artist_info(artist_id){
     $('#artist-heart').attr({
         'data-id': artist_id,
     });
-    var liked_artists = JSON.parse(localStorage.getItem('liked_artists'));
+    var liked_artists = JSON.parse(localStorage.getItem('liked_artists')) || {};
     if(artist_id in liked_artists){
         $('#artist-heart').prop('checked', true);
     }else{
