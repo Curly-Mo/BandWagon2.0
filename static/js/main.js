@@ -481,7 +481,7 @@ function parse_events(events, recommendations){
 
 
 function soundcloud_init(){
-    var url = '//secure.soundcloud.com/oauth/token';
+    var url = 'https://secure.soundcloud.com/oauth/token';
     var headers = {
       'accept': 'application/json; charset=utf-8',
       'Content-Type': 'application/x-www-form-urlencoded',
