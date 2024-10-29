@@ -1111,7 +1111,7 @@ function set_event_info(event_id, artist_id){
 
 function lastfm_artist_info(artist_id, el){
     var apiKey = "812ddaf7105675342e456ebf4eab4e92";
-    var lastfm_url = 'http://ws.audioscrobbler.com/2.0/?';
+    var lastfm_url = 'https://ws.audioscrobbler.com/2.0/?';
     var params = {
         'api_key': apiKey,
         'method': 'artist.getinfo',
@@ -1160,21 +1160,174 @@ function lastfm_artist_info(artist_id, el){
                     active_pane($('#artist-pane'));
                 });
             }
-            if(artist_profile.image[0]['#text'] != null && artist_profile.image[0]['#text'] != ''){
+            // https://stackoverflow.com/questions/55978243/last-fm-api-returns-same-white-star-image-for-all-artists
+            // if(artist_profile.image[0]['#text'] != null && artist_profile.image[0]['#text'] != ''){
+            //     var slider = $('<div>').addClass('center').css({'width': '90%', 'margin-top': '8px'});
+            //     var image = $('<img>').css({'max-width': '100%', 'max-height': '100%'});
+            //     for(var i = 0; i < artist_profile.image.length; i++) {
+            //         image.attr('src', artist_profile.image[i]['#text']);
+            //         if(artist_profile.image[i].size == 'mega'){
+            //             break;
+            //         }
+            //     }
+            //     body.append(slider.append(image));
+            // }else{
+            //     body.append($('<br>'));
+            // }
+            // using musicbrainz instead
+            if (typeof artist_profile.mbid !== "undefined") {
+              var mb_future = musicbrainz_fetch_artist_info(artist_profile['mbid']);
+            } else {
+              var mb_future = musicbrainz_search_artist(artist_profile.name).then((mb_search_artist) =>
+                musicbrainz_fetch_artist_info(mb_search_artist.id));
+            }
+            mb_future.then((mb_artist_info) => {
+              if(mb_artist_info.best_image != null && mb_artist_info.best_image != ''){
                 var slider = $('<div>').addClass('center').css({'width': '90%', 'margin-top': '8px'});
                 var image = $('<img>').css({'max-width': '100%', 'max-height': '100%'});
-                for(var i = 0; i < artist_profile.image.length; i++) {
-                    image.attr('src', artist_profile.image[i]['#text']);
-                    if(artist_profile.image[i].size == 'mega'){
-                        break;
-                    }
-                }
+                image.attr('src', mb_artist_info.best_image);
                 body.append(slider.append(image));
-            }else{
+              }else{
                 body.append($('<br>'));
-            }
+              }
+            });
         }
     });
+}
+
+// TODO: figure out all the missing fields that last.fm currently has better
+// function musicbrainz_artist_info(artist_id, el){
+//   musicbrainz_search_artist(artists[artist_id]).then((mb_search_artist) =>
+//     musicbrainz_fetch_artist_info(mb_search_artist.id)
+//   ).then((mb_artist_info) =>{
+//     var artist_profile = mb_artist_info;
+//     var body = el;
+//     if(typeof artist_profile === "undefined"){
+//         body.append($('<p>').text('Unknown artist'));
+//         return;
+//     }
+//     if(typeof artist_profile.bio.content !== "undefined" && artist_profile.bio.content !== ""){
+//         body.append($('<label>').text('Bio:'))
+//             .append($('<p>').html(lastfm_bio(artist_profile.bio)));
+//     }
+//     if(typeof artist_profile.tags.tag[0] !== "undefined"){
+//         var terms = artist_profile.tags.tag.map(function(term) {return term.name;}).join(', ');
+//         body.append($('<label>').text('Genre:'))
+//             .append($('<p>').text(terms));
+//     }
+//     if(typeof artist_profile.similar.artist[0] !== "undefined"){
+//         var similar = artist_profile.similar.artist.slice(0,5).map(function(a) {return a.name;}).join(', ');
+//         body.append($('<label>').text('Similar Artists:'))
+//             .append($('<p>').text(similar));
+//     }
+//     if(body.parent().parent().attr('id') == 'event-artists'){
+//         var artist_page = $('<a>').attr({
+//             'href': 'javascript:void(0)',
+//             'data-id': artist_id,
+//         }).text('see all shows');
+//         body.append($('<p>').addClass('right').append(artist_page));
+//         artist_page.on('tap click', function(e){
+//             set_artist_info(this.getAttribute('data-id'));
+//             active_pane($('#artist-pane'));
+//         });
+//     }
+//       if(mb_artist_image != null && mb_artist_image != ''){
+//         var slider = $('<div>').addClass('center').css({'width': '90%', 'margin-top': '8px'});
+//         var image = $('<img>').css({'max-width': '100%', 'max-height': '100%'});
+//         for(var i = 0; i < artist_profile.image.length; i++) {
+//           image.attr('src', artist_profile.image[i]['#text']);
+//           if(artist_profile.image[i].size == 'mega'){
+//             break;
+//           }
+//         }
+//         body.append(slider.append(image));
+//       }else{
+//         body.append($('<br>'));
+//       }
+//     });
+//     });
+// }
+
+function musicbrainz_search_artist(artist_name){
+  var musicbrainz_url = `https://musicbrainz.org/ws/2/artist/`;
+  var params = {
+    'query': artist_name,
+    'limit': '1',
+    'fmt': 'json',
+  }
+  var url = musicbrainz_url + '?' + $.param(params, true);
+  return fetch(url, {
+    cache: "force-cache",
+  })
+  .then((response) => response.json())
+  .then((search_results) => {
+    return search_results.artists[0];
+  });
+}
+
+function musicbrainz_fetch_artist_info(mbid){
+  var musicbrainz_url = `https://musicbrainz.org/ws/2/artist/${mbid}/`;
+  var params = {
+    'inc': 'url-rels',
+    'fmt': 'json',
+  }
+  var url = musicbrainz_url + '?' + $.param(params, true);
+  return fetch(url, {
+    cache: "force-cache",
+  })
+  .then((response) => response.json())
+  .then((mb_artist_info) => {
+    return musicbrainz_find_image(mb_artist_info).then(image_url => {
+      mb_artist_info['best_image'] = image_url
+      return mb_artist_info;
+    });
+  });
+}
+
+function musicbrainz_find_image(mb_artist_info){
+  var image_url = null;
+  for ( const [key, relation] of Object.entries(mb_artist_info.relations) ) {
+    if (relation.type === 'image') {
+      if (image_url != null && !image_url.includes("twimg.com")) {
+        continue;
+      }
+      image_url = relation.url.resource;
+      if (image_url.startsWith('https://commons.wikimedia.org/wiki/File:')) {
+        var filename = image_url.substring(image_url.lastindexof('/') + 1);
+        image_url = 'https://commons.wikimedia.org/wiki/special:redirect/file/' + filename;
+      }
+    }
+    if (relation.type === 'wikidata') {
+      var wikidata_url = relation.url.resource;
+      var wikidata_entity_id = wikidata_url.substring(wikidata_url.lastIndexOf('/') + 1);
+    }
+  }
+  if (image_url != null && !image_url.includes("twimg.com")) {
+    return Promise.resolve(image_url);
+  }
+  return wikidata_fetch_images(wikidata_entity_id);
+}
+
+function wikidata_fetch_images(entity_id){
+  var wikidata_api_url = 'https://www.wikidata.org/w/api.php';
+  var params = {
+    'action': 'query',
+    'prop': 'images|pageprops',
+    'titles': entity_id,
+    'origin': '*',
+    'format': 'json',
+  }
+  var url = wikidata_api_url + '?' + $.param(params, true);
+  return fetch(url, {
+    cache: "force-cache",
+  })
+  .then((response) => response.json())
+  .then((wiki_artist_info) => {
+    for ( const [key, entity] of Object.entries(wiki_artist_info.query.pages) ) {
+      var filename = entity.pageprops.page_image_free;
+      return 'https://commons.wikimedia.org/wiki/special:redirect/file/' + filename;
+    }
+  });
 }
 
 function echonest_artist_info(artist_id){

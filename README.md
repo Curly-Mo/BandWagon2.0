@@ -1,5 +1,5 @@
 # BandWagon
-www.bandwagon.pl
+www.bandwagon.audio
 
 Discover local concerts
 
