@@ -9,7 +9,7 @@ var settings = {
     'custom_location_enable': false,
     'custom_location': '',
 }
-soundcloud_init().then(init);
+soundcloud_init().always(init);
 function init(){
     // if(navigator.userAgent.toLowerCase().indexOf('firefox') > -1 && navigator.appVersion.toLowerCase().indexOf("win") > -1){
     //     Materialize.toast("This page does not run well in Firefox. Use Chrome for a better experience.", 5000)
@@ -432,7 +432,7 @@ function shuffle(o){
 }
 
 function parse_events(events, recommendations){
-    var max_events = 50;
+    var max_events = 25;
     events = shuffle(events);
     events = apply_event_preferences(events);
     for(var i = 0; i < Math.min(events.length, max_events); i++) {
