@@ -25,5 +25,8 @@ handlers:
 - url: /privacy_policy.txt
   static_files: static/privacy_policy.txt
   upload: static/privacy_policy.txt
+- url: /manifest.json
+  static_files: static/manifest.json
+  upload: static/manifest.json
 - url: /.*
   script: main.app

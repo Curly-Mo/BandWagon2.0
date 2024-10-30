@@ -3,6 +3,9 @@ html {
     color: #ebebec;
     overflow: hidden;
 }
+html * {
+    scrollbar-width: thin;
+}
 body {
     position: absolute;
     width: 100%;
@@ -10,9 +13,6 @@ body {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
-}
-::-webkit-scrollbar { 
-    display: none; 
 }
 header {
     flex-shrink: 0;
