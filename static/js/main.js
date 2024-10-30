@@ -9,7 +9,7 @@ var settings = {
     'custom_location_enable': false,
     'custom_location': '',
 }
-soundcloud_init().always(init);
+soundcloud_init().then(init);
 function init(){
     // if(navigator.userAgent.toLowerCase().indexOf('firefox') > -1 && navigator.appVersion.toLowerCase().indexOf("win") > -1){
     //     Materialize.toast("This page does not run well in Firefox. Use Chrome for a better experience.", 5000)
@@ -482,7 +482,7 @@ function parse_events(events, recommendations){
 
 function soundcloud_init(){
     var soundcloud_auth = JSON.parse(localStorage.getItem('soundcloud_auth')) || {};
-    if (soundcloud_auth['expires_at'] && soundcloud_auth['expires_at'] < Date.now()) {
+    if (soundcloud_auth['expires_at'] && soundcloud_auth['expires_at'] > Date.now()) {
       return Promise.resolve(soundcloud_auth);
     }
     var url = 'https://secure.soundcloud.com/oauth/token';
@@ -494,17 +494,27 @@ function soundcloud_init(){
     var body = {
       'grant_type': 'client_credentials',
     }
-    return $.ajax({
-      url: url,
-      type: "POST",
-      timeout: 10000,
-      data: body,
-      headers: headers,
-      success : function(response) {
-        response['expires_at'] = Date.now() + (response.expires_in * 1000)
-        localStorage['soundcloud_auth'] = JSON.stringify(response);
-        setTimeout(soundcloud_init, response.expires_in * 1000);
-      },
+    return new Promise((resolve, reject) => {
+      $.ajax({
+        url: url,
+        type: "POST",
+        timeout: 10000,
+        data: body,
+        headers: headers,
+        success : function(response) {
+          resolve(response);
+        },
+        error: function(error) {
+          reject(error);
+        },
+      });
+    }).then((response) => {
+      response['expires_at'] = Date.now() + (response.expires_in * 1000)
+      localStorage['soundcloud_auth'] = JSON.stringify(response);
+      setTimeout(soundcloud_init, response.expires_in * 1000);
+      return response;
+    }).catch((error) => {
+      return soundcloud_auth;
     });
 }
 
