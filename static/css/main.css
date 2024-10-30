@@ -5,6 +5,7 @@ html {
 }
 html * {
     scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, .2) rgba(255, 255, 255, .03);
 }
 body {
     position: absolute;
