@@ -1,7 +1,7 @@
 import SoundCloud from "/js/modules/soundcloud.js";
 
 //window.addEventListener("load", init, false);
-let settings = {
+window.settings = {
     'autoplay': false,
     'geolocation': false,
     'startdate': 0,
