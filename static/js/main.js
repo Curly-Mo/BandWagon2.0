@@ -1,6 +1,7 @@
-"use strict";
+import SoundCloud from "/js/modules/soundcloud.js";
+
 //window.addEventListener("load", init, false);
-var settings = {
+let settings = {
     'autoplay': false,
     'geolocation': false,
     'startdate': 0,
@@ -9,7 +10,7 @@ var settings = {
     'custom_location_enable': false,
     'custom_location': '',
 }
-soundcloud_init().then(init);
+window.soundcloud = new SoundCloud(init);
 function init(){
     // if(navigator.userAgent.toLowerCase().indexOf('firefox') > -1 && navigator.appVersion.toLowerCase().indexOf("win") > -1){
     //     Materialize.toast("This page does not run well in Firefox. Use Chrome for a better experience.", 5000)
@@ -431,8 +432,20 @@ function shuffle(o){
     return o;
 }
 
+function fetch_tracks(artist, event_id, limit = 5){
+  $('#loader').slideDown();
+  $('#loader > .preloader-wrapper').show();
+  $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
+    $(this).text('Loading tracks...');
+  }).fadeTo(500, 1);
+  return soundcloud.fetch_artist_tracks(artist, event_id, limit)
+    .then((artist) => {
+      window.tracks = {...window.tracks, ...artist.tracks};
+    });
+}
+
 function parse_events(events, recommendations){
-    var max_events = 25;
+    var max_events = 75;
     events = shuffle(events);
     events = apply_event_preferences(events);
     for(var i = 0; i < Math.min(events.length, max_events); i++) {
@@ -445,18 +458,18 @@ function parse_events(events, recommendations){
                     var performer = event.performers[j];
                     window.artists[performer.id] = performer;
                     promises.push(
-                      soundcloud_fetch_tracks(performer, 3, event.id)
+                      fetch_tracks(performer, event.id, 5)
                     );
                 })(j);
             }
         })(i);
     }
-    $.when.apply($, promises).then(function() {
+    Promise.all(promises).then(function() {
         // returned data is in arguments[0][0], arguments[1][0], ... arguments[9][0]
         $('#loader').slideUp();
         load_tracks(create_track_list());
         promises.length = 0;
-    }, function(e) {
+    }).catch(function(e) {
         // error occurred
         console.log(e);
         $('#loader').slideUp();
@@ -475,109 +488,6 @@ function parse_events(events, recommendations){
                 console.log('grab liked artist events, in case recommendations missed them');
                 get_events(true, liked_artists);
             }
-        }
-    }
-}
-
-
-function soundcloud_init(){
-    var soundcloud_auth = JSON.parse(localStorage.getItem('soundcloud_auth')) || {};
-    if (soundcloud_auth['expires_at'] && soundcloud_auth['expires_at'] > Date.now()) {
-      return Promise.resolve(soundcloud_auth);
-    }
-    var url = 'https://secure.soundcloud.com/oauth/token';
-    var headers = {
-      'accept': 'application/json; charset=utf-8',
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': `Basic ${btoa('f1686e09dcc2a404eccb6f8473803687:892bd88dc9ec76015dc4620d6af9dc2b')}`,
-    }
-    var body = {
-      'grant_type': 'client_credentials',
-    }
-    return new Promise((resolve, reject) => {
-      $.ajax({
-        url: url,
-        type: "POST",
-        timeout: 10000,
-        data: body,
-        headers: headers,
-        success : function(response) {
-          resolve(response);
-        },
-        error: function(error) {
-          reject(error);
-        },
-      });
-    }).then((response) => {
-      response['expires_at'] = Date.now() + (response.expires_in * 1000)
-      localStorage['soundcloud_auth'] = JSON.stringify(response);
-      setTimeout(soundcloud_init, response.expires_in * 1000);
-      return response;
-    }).catch((error) => {
-      return soundcloud_auth;
-    });
-}
-
-function soundcloud_fetch_tracks(artist, limit, event_id){
-  var soundcloud_auth = JSON.parse(localStorage.getItem('soundcloud_auth')) || {};
-  return $.ajax({
-    url: soundcloud_url(artist.name, limit),
-    dataType: 'json',
-    cache: true,
-    headers: {
-      'Authorization': `${soundcloud_auth.token_type} ${soundcloud_auth.access_token}`,
-    },
-    beforeSend: function() {
-      $('#loader').slideDown();
-      $('#loader > .preloader-wrapper').show();
-      $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
-        $(this).text('Loading tracks...');
-      }).fadeTo(500, 1);
-    },
-    success: function(response){
-      parse_tracks(response, event_id, artist.id);
-    }
-  });
-}
-
-function soundcloud_url(artist, limit){
-    var base_url = '//api.soundcloud.com/tracks';
-    var params = {
-        'order': 'hotness',
-        'limit': limit,
-        'q': artist,
-        'username': artist,
-    }
-    var query_string = $.param(params, true);
-    var url = base_url + '?' + query_string;
-    return url
-}
-
-function soundcloud_fetch_stream(track_id){
-  var soundcloud_auth = JSON.parse(localStorage.getItem('soundcloud_auth')) || {};
-  var url = tracks[track_id].stream_url;
-  return fetch(url, {
-      headers: {
-        'Authorization': `${soundcloud_auth.token_type} ${soundcloud_auth.access_token}`,
-      },
-    })
-    .then((response) => response.blob());
-}
-
-function parse_tracks(tracks, event_id, artist_id){
-    for(var i = 0; i < tracks.length; i++) {
-        var track = tracks[i];
-        if(track.streamable){
-            track.event_id = event_id;
-            track.artist_id = artist_id;
-            track.image = track.artwork_url;
-            if(!track.image){
-                track.image = track.user.avatar_url;
-            }
-            if(!track.image){
-                track.image = 'images/favicon.png';
-            }
-            window.tracks[track.id] = track;
         }
     }
 }
@@ -691,7 +601,7 @@ function play_track(track_id){
     //audio.pause();
     //audio.removeAttribute("src"); 
     ////
-    soundcloud_fetch_stream(track_id).then(function(response) {
+    soundcloud.fetch_stream(track_id).then(function(response) {
       audio.src = URL.createObjectURL(response);
       play();
     });
@@ -1554,12 +1464,12 @@ function play_artists(artist_ids, event_id, venue_id){
     }
     clear_playlist();
     window.tracks = {};
-    var tracks_per = Math.max(Math.floor(15-10*Math.log10(artist_ids.length)), 3);
+    var tracks_per = Math.max(Math.floor(15-10*Math.log10(artist_ids.length)), 5);
     for(var i = 0; i < artist_ids.length; i++) {
         (function (i) {
             var performer = artists[artist_ids[i]];
             promises.push(
-                soundcloud_fetch_tracks(performer, tracks_per, performer.event_id)
+                fetch_tracks(performer, performer.event_id, tracks_per)
             );
         })(i);
     }
