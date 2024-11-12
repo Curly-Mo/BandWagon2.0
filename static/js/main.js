@@ -447,7 +447,7 @@ function fetch_tracks(artist, event_id, limit = 5){
 }
 
 function parse_events(events, recommendations){
-    var max_events = 75;
+    var max_events = 50;
     events = shuffle(events);
     events = apply_event_preferences(events);
     for(var i = 0; i < Math.min(events.length, max_events); i++) {
