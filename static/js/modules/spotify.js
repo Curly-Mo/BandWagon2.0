@@ -83,39 +83,51 @@ class Spotify {
   //   });
   // }
 
-  import() {
-    this.user_auth();
-    this.update_liked_artists();
-  }
-
-  fetch_user_likes(limit = 50) {
+  fetch_user_likes(limit = 200) {
     let auth = this.store.get("auth");
     let base_url = 'https://api.spotify.com/v1/me/top/artists';
     let params = {
-        'type': 'artists',
-        'time_range': 'long_term',
-        'limit': limit,
-        'state': this.state,
+      'type': 'artists',
+      'time_range': 'long_term',
+      'state': this.state,
+      'limit': limit,
+      'offset': 0,
     }
-    let query_string = $.param(params, true);
-    let url = base_url + '?' + query_string;
     let headers = {
-      'Authorization': `Bearer ${auth.access_token}`,
+      'Authorization': `${auth.token_type} ${auth.access_token}`,
     }
-    return fetch(url, {
-      method: "GET",
-      headers: headers,
-    })
-    .then((response) => response.json())
-    .then((response) => {
-      this.store.set("top_artists_response", response);
-      this.store.set("liked_artists", response.items);
-      return response;
+    let promises = [];
+    while (limit > 0) {
+      if (limit > 50) {
+        params.limit = 50;
+      }
+      let query_string = $.param(params, true);
+      let url = base_url + '?' + query_string;
+      promises.push(
+        fetch(url, {
+          method: "GET",
+          headers: headers,
+        })
+        .then((response) => response.json())
+      );
+      limit = limit - 50;
+      params.offset = params.offset + 50;
+    }
+    return Promise.all(promises)
+    .then((responses) => {
+      let top_artists_responses = responses;
+      let liked_artists = [];
+      for(let response of responses) {
+        liked_artists = liked_artists.concat(response.items);
+      }
+      this.store.set("top_artists_responses", top_artists_responses);
+      this.store.set("liked_artists", liked_artists);
+      return liked_artists;
     });
   }
 
   update_liked_artists(){
-    this.fetch_user_likes()
+    return this.fetch_user_likes()
     .then((response) => {
       let liked_artists = this.store.get("liked_artists");
       for(var i=0; i<liked_artists.length; i++){
@@ -124,9 +136,14 @@ class Spotify {
       }
     })
     .catch((err) => {
-      console.log(err);
+      console.warn(err);
       Materialize.toast("Error importing from Spotify", 5000);
     });
+  }
+
+  import() {
+    this.user_auth();
+    this.update_liked_artists();
   }
 
 }
