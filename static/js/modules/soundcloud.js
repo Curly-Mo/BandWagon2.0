@@ -71,7 +71,6 @@ class SoundCloud {
     }
     return fetch(this.artist_tracks_url(artist.name, limit), {
       method: 'GET',
-      cache: 'force-cache',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': this.auth_header(),
