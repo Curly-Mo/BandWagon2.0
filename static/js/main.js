@@ -1,4 +1,5 @@
 import SoundCloud from "/js/modules/soundcloud.js";
+import Spotify from "/js/modules/spotify.js";
 
 //window.addEventListener("load", init, false);
 window.settings = {
@@ -11,6 +12,7 @@ window.settings = {
     'custom_location': '',
 }
 window.soundcloud = new SoundCloud(init);
+window.spotify = new Spotify();
 function init(){
     // if(navigator.userAgent.toLowerCase().indexOf('firefox') > -1 && navigator.appVersion.toLowerCase().indexOf("win") > -1){
     //     Materialize.toast("This page does not run well in Firefox. Use Chrome for a better experience.", 5000)
@@ -835,7 +837,7 @@ function init_settings(){
     load_settings();
     $('#show-likes, #show-dislikes').on('click', function(){
         load_preferences();
-        facebook_init();
+        // facebook_init();
     });
     //$('#add_liked_artist, #add_liked_genre, #add_disliked_artist, #add_disliked_genre').on('keydown', add_pref);
     $('#add_liked_artist, #add_disliked_artist').on('keydown', function(){
@@ -1624,16 +1626,22 @@ function load_preferences(){
                 'class': 'material-icons',
                 'text': 'close',
             });
-            el.append(
-                $('<div>', {
-                    'class': 'chip',
-                    'text': pref[keys[k]].name,
-                    'data-id': pref[keys[k]].id,
-                }).append(close)
-            );
             close.on('click', function(){
                 remove_pref($(this).parent().parent().attr('id'), this.parentNode.getAttribute('data-id'));
             });
+            let chip = $('<div>', {
+              'class': 'chip',
+              'text': pref[keys[k]].name,
+              'data-id': pref[keys[k]].id,
+            });
+            chip.on('tap click', function(e){
+              set_artist_info(this.getAttribute('data-id'));
+              active_pane($('#artist-pane'));
+              $('.button-collapse').sideNav('hide');
+              $('.lean-overlay').click();
+            });
+            chip.append(close);
+            el.append(chip);
         }
     }
 }
@@ -1644,13 +1652,14 @@ function remove_pref(pref_type, value){
     localStorage.setItem(pref_type, JSON.stringify(preferences));
 }
 
-function add_pref(pref_type, value){
+window.add_pref = function(pref_type, value){
     if(value == null || value == ''){
         return;
     }
     if(window.artists[value]){
         var preferences = JSON.parse(localStorage.getItem(pref_type)) || {};
-        preferences[value] = {'id': value, 'name': window.artists[value].name};
+        // preferences[value] = {'id': value, 'name': window.artists[value].name};
+        preferences[value] = window.artists[value];
         localStorage.setItem(pref_type, JSON.stringify(preferences));
         load_preferences();
         return;
@@ -1680,8 +1689,12 @@ function add_pref(pref_type, value){
             }
             var artist = data.performers[0]
             var preferences = JSON.parse(localStorage.getItem(this.pref_type)) || {};
-            preferences[artist.id] = {'id': artist.id, 'name': artist.name};
-            localStorage.setItem(this.pref_type, JSON.stringify(preferences));
+            // preferences[artist.id] = {'id': artist.id, 'name': artist.name};
+            if(artist) {
+              preferences[artist.id] = artist;
+              localStorage.setItem(this.pref_type, JSON.stringify(preferences));
+              window.artists[artist.id] = artist;
+            }
             load_preferences();
         },
     });
@@ -2174,56 +2187,59 @@ function venue_events(venue_id, el){
     });
 }
 
+window.spotify_import = function() {
+  spotify.import();
+}
 
-function facebook_init(){
-    window.fbAsyncInit = function() {
-        FB.init({
-            appId      : '1696944990518859',
-            xfbml      : true,
-            version    : 'v2.7'
-        });
-        $('#facebook-import').show();
-    };
-    (function(d, s, id){
-        var js, fjs = d.getElementsByTagName(s)[0];
-        if (d.getElementById(id)) {return;}
-        js = d.createElement(s); js.id = id;
-        js.src = "//connect.facebook.net/en_US/sdk.js";
-        fjs.parentNode.insertBefore(js, fjs);
-    }(document, 'script', 'facebook-jssdk'));
-}
-function facebook_login(){
-    FB.getLoginStatus(function(response) {
-        if (response.status === 'connected') {
-            console.log('Logged in.');
-            facebook_get_music();
-        }
-        else {
-            FB.login(function(response) {
-                facebook_get_music();
-            }, {scope: 'user_likes'});
-        }
-    });
-}
-function facebook_get_music(){
-    FB.api(
-        '/me/music',
-        'get',
-        {'limit': 800},
-        function (response) {
-            if (response && !response.error) {
-                console.log(response);
-                for(var i=0; i<response.data.length; i++){
-                    var artist = response.data[i];
-                    add_pref('liked_artists', artist.name);
-                }
-            }else{
-                console.log(response);
-                Materialize.toast("Error importing from Facebook", 5000);
-            }
-        }
-    );
-}
+// function facebook_init(){
+//     window.fbAsyncInit = function() {
+//         FB.init({
+//             appId      : '1696944990518859',
+//             xfbml      : true,
+//             version    : 'v2.7'
+//         });
+//         $('#facebook-import').show();
+//     };
+//     (function(d, s, id){
+//         var js, fjs = d.getElementsByTagName(s)[0];
+//         if (d.getElementById(id)) {return;}
+//         js = d.createElement(s); js.id = id;
+//         js.src = "//connect.facebook.net/en_US/sdk.js";
+//         fjs.parentNode.insertBefore(js, fjs);
+//     }(document, 'script', 'facebook-jssdk'));
+// }
+// function facebook_login(){
+//     FB.getLoginStatus(function(response) {
+//         if (response.status === 'connected') {
+//             console.log('Logged in.');
+//             facebook_get_music();
+//         }
+//         else {
+//             FB.login(function(response) {
+//                 facebook_get_music();
+//             }, {scope: 'user_likes'});
+//         }
+//     });
+// }
+// function facebook_get_music(){
+//     FB.api(
+//         '/me/music',
+//         'get',
+//         {'limit': 800},
+//         function (response) {
+//             if (response && !response.error) {
+//                 console.log(response);
+//                 for(var i=0; i<response.data.length; i++){
+//                     var artist = response.data[i];
+//                     add_pref('liked_artists', artist.name);
+//                 }
+//             }else{
+//                 console.log(response);
+//                 Materialize.toast("Error importing from Facebook", 5000);
+//             }
+//         }
+//     );
+// }
 
 // Array.find polyfill for certain browsers (Android)
 if (!Array.prototype.find) {

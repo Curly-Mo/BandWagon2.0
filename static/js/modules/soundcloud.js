@@ -25,8 +25,6 @@ class SoundCloud {
     return this.store._data.tracks;
   }
   set tracks(value) {
-    // this.store._data.tracks;
-    // // this.tracks = value;
     this.store.set("tracks", value);
   }
 
@@ -35,9 +33,7 @@ class SoundCloud {
   }
 
   init() {
-    // this.auth = this.store.get("auth");
-    this.auth = this.store.get("auth");
-    if (this.auth['expires_at'] && this.auth['expires_at'] < Date.now()) {
+    if (this.auth['expires_at'] && this.auth['expires_at'] > Date.now()) {
       return Promise.resolve(this.auth);
     }
     let url = 'https://secure.soundcloud.com/oauth/token';
@@ -54,13 +50,8 @@ class SoundCloud {
       body: new URLSearchParams(body),
       headers: headers,
     })
-    .then((response) => {
-      window.response1 = response;
-      return response;
-    })
     .then((response) => response.json())
     .then((response) => {
-      window.response = response;
       response['expires_at'] = Date.now() + (response.expires_in * 1000)
       // this.update_store("auth", response);
       this.store.set("auth", response);

@@ -612,6 +612,20 @@ ul.collapsible.popout > li:first-child.active {
 	background-color: #2d4373;
 }
 
+#spotify-import {
+	color: #ffffff;
+  background: #0d8934;
+  padding: 8px;
+	border-radius: 4px;
+	display: none;
+	float: right;
+}
+
+#spotify-import:hover{
+  cursor: pointer;
+	background-color: #1db954;
+}
+
 .heart-wrapper {
   display: -webkit-box;
   display: -webkit-flex;

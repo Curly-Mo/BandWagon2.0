@@ -110,11 +110,20 @@
 
 <div id="likes-modal" class="modal modal-fixed-footer">
     <div class="modal-content">
+        <!--
         <span id="facebook-import" onclick="facebook_login()" href="javascript:void(0)">
           <svg style="width:24px;height:24px; margin: 0 1px -6px 0;" viewBox="0 0 24 24">
                 <path fill="#FFFFFF" d="M19,4V7H17A1,1 0 0,0 16,8V10H19V13H16V20H13V13H11V10H13V7.5C13,5.56 14.57,4 16.5,4M20,2H4A2,2 0 0,0 2,4V20A2,2 0 0,0 4,22H20A2,2 0 0,0 22,20V4C22,2.89 21.1,2 20,2Z" />
           </svg>
           Import from Facebook
+        </span>
+        -->
+        <span id="spotify-import" onclick="spotify_import()" href="javascript:void(0)">
+          <svg style="width:20px;height:20px; margin: 0 1px -6px 0;" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0m3.669 11.538a.5.5 0 0 1-.686.165c-1.879-1.147-4.243-1.407-7.028-.77a.499.499 0 0 1-.222-.973c3.048-.696 5.662-.397 7.77.892a.5.5 0 0 1 .166.686m.979-2.178a.624.624 0 0 1-.858.205c-2.15-1.321-5.428-1.704-7.972-.932a.625.625 0 0 1-.362-1.194c2.905-.881 6.517-.454 8.986 1.063a.624.624 0 0 1 .206.858m.084-2.268C10.154 5.56 5.9 5.419 3.438 6.166a.748.748 0 1 1-.434-1.432c2.825-.857 7.523-.692 10.492 1.07a.747.747 0 1 1-.764 1.288"/>
+          </svg>
+
+          Import from Spotify
         </span>
         <h5>Liked Artists</h5>
         <div id="liked_artists"></div>
