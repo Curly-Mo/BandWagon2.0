@@ -1629,17 +1629,27 @@ function load_preferences(){
             close.on('click', function(){
                 remove_pref($(this).parent().parent().attr('id'), this.parentNode.getAttribute('data-id'));
             });
-            let chip = $('<div>', {
-              'class': 'chip',
-              'text': pref[keys[k]].name,
-              'data-id': pref[keys[k]].id,
+
+            close.on('click', function(){
+                remove_pref($(this).parent().parent().attr('id'), this.parentNode.getAttribute('data-id'));
             });
-            chip.on('tap click', function(e){
+            var text = $('<a>', {
+                'text': pref[keys[k]].name,
+                'data-id': pref[keys[k]].id,
+                'href': 'javascript:void(0)',
+                'style': 'color:rgba(0,0,0,0.6)',
+            });
+            text.on('tap click', function(e){
               set_artist_info(this.getAttribute('data-id'));
               active_pane($('#artist-pane'));
               $('.button-collapse').sideNav('hide');
               $('.lean-overlay').click();
             });
+            let chip = $('<div>', {
+              'class': 'chip',
+              'data-id': pref[keys[k]].id,
+            });
+            chip.append(text);
             chip.append(close);
             el.append(chip);
         }
