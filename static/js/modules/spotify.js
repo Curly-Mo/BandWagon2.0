@@ -35,7 +35,7 @@ class Spotify {
     return (Math.random().toString(36)+'00000000000000000').slice(2, 16);
   }
 
-  user_auth(redirect_uri = "http://localhost:8080", scopes = []) {
+  user_auth(redirect_uri = "https://bandwagon.audio", scopes = []) {
     let auth = this.store.get("auth");
     if (auth.access_token && auth.expires_at > Date.now()) {
       console.log("already authed");
