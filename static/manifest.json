@@ -1,10 +1,22 @@
 {
   "short_name": "BandWagon",
-  "name": "Band Wagon Playlist",
+  "name": "Band Wagon",
+  "description": "Discover Local Concerts",
+  "categories": ["music", "entertainment", "concerts"],
   "icons": [
     {
       "src": "/images/wagon72.png",
       "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/wagon96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/wagon128.png",
+      "sizes": "128x128",
       "type": "image/png"
     },
     {
@@ -13,12 +25,20 @@
       "type": "image/png"
     },
     {
-      "src": "/images/wagon200.png",
+      "src": "/images/wagon192.png",
       "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/wagon512.png",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ],
-  "start_url": "/index.html",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "orientation": "portrait"
+  "orientation": "native",
+  "background_color": "#14181b",
+  "theme_color": "#14181b"
 }
