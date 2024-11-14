@@ -301,6 +301,8 @@ function get_events(no_recommendations, performers){
     if(liked_artists !=null && Object.keys(liked_artists).length > 0 && no_recommendations != true){
         base_url += 'recommendations?';
         var artist_ids = jQuery.map(liked_artists, function(performer) { if(performer.id != null){return performer.id;}});
+        // recommendations endpoint can only take up to 20 performer ids
+        artist_ids = artist_ids.slice(0, 20);
         params['performers.id'] = artist_ids;
     }else{
         base_url += 'events?';
