@@ -1,5 +1,6 @@
 import SoundCloud from "/js/modules/soundcloud.js";
 import Spotify from "/js/modules/spotify.js";
+import SeatGeek from "/js/modules/seatgeek.js";
 
 //window.addEventListener("load", init, false);
 window.settings = {
@@ -13,6 +14,7 @@ window.settings = {
 }
 window.soundcloud = new SoundCloud(init);
 window.spotify = new Spotify();
+window.seatgeek = new SeatGeek();
 function init(){
     // if(navigator.userAgent.toLowerCase().indexOf('firefox') > -1 && navigator.appVersion.toLowerCase().indexOf("win") > -1){
     //     Materialize.toast("This page does not run well in Firefox. Use Chrome for a better experience.", 5000)
@@ -258,179 +260,6 @@ function clear_modal(){
     $('#loader > .preloader-wrapper').show();
 }
 
-function get_events(no_recommendations, performers){
-    var base_url = 'https://api.seatgeek.com/2/';
-    var params = {
-        aid: 11799,
-        client_id: 'NDA0ODEwNnwxNDUxNTIwNTY1',
-        range: window.settings.distance || "20mi",
-        'taxonomies.name': ['concert', 'music_festival'],
-        'datetime_local.gte': moment().local().startOf('day').add(window.settings.startdate, 'days').format('YYYY-MM-DD'),
-        'datetime_local.lte': moment().local().startOf('day').add(window.settings.enddate + 1, 'days').format('YYYY-MM-DD'),
-        per_page: 500,
-    }
-    $('#loader').slideDown();
-    $('#loader > .preloader-wrapper').show();
-    if(window.settings.custom_location_enable && window.settings.custom_location != ''){
-        $('#loading-message').text('Confirming Custom Location...').fadeIn(200);
-        var geo = geo_from_address(window.settings.custom_location);
-        if(geo == null){
-            $('#loader > .preloader-wrapper').hide();
-            $('#loading-message').html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
-                +   "I don't recognize '" + window.settings.custom_location +"'<br>"
-                +   "Please try typing a different location."
-            );
-            setTimeout(function(){
-                $('.button-collapse').sideNav('show');
-                $('#loader').hide();
-                $('#custom_location').select();
-            }, 4000);
-            return;
-        }else{
-            params['lat'] = geo.latitude;
-            params['lon'] = geo.longitude;
-        }
-    }else if(window.coordinates){
-        params['lat'] = window.coordinates.latitude;
-        params['lon'] = window.coordinates.longitude;
-    }else{
-        params['geoip'] = true;
-    }
-
-    var liked_artists = JSON.parse(localStorage.getItem('liked_artists')) || {};
-    if(liked_artists !=null && Object.keys(liked_artists).length > 0 && no_recommendations != true){
-        base_url += 'recommendations?';
-        var artist_ids = jQuery.map(liked_artists, function(performer) { if(performer.id != null){return performer.id;}});
-        // recommendations endpoint can only take up to 20 performer ids
-        artist_ids = artist_ids.slice(0, 20);
-        params['performers.id'] = artist_ids;
-    }else{
-        base_url += 'events?';
-        // If performers given, only get events from those performers
-        if(performers != null){
-            var artist_ids = jQuery.map(performers, function(performer) {
-                if(performer.id != null && !(performer.id in window.artists)){
-                    return performer.id;
-                }
-            });
-            console.log(artist_ids);
-            if(artist_ids == null || artist_ids.length == 0){
-                return;
-            }
-            params['performers.id'] = artist_ids;
-        }
-    }
-
-
-    var url = base_url + $.param(params, true);
-    //console.log(url);
-    if(no_recommendations == true){
-        $('#loading-message').text('Expanding your tastes...').fadeIn(200);
-    }else{
-        $('#loading-message').text('Finding concerts...').fadeIn(200);
-    }
-    $.ajax({
-        url: url,
-        tryCount : 0,
-        retryLimit : 1,
-        timeout: 20000,
-        cache: true,
-        complete: function(){
-            //$('#loader').closeModal();
-        },
-        success: function(response){
-            if(response.recommendations != null){
-                response.events = jQuery.map(response.recommendations, function(r){return r.event;});
-            }
-            if(response.events.length > 0) {
-                //$('#loader').closeModal({out_duration: 0});
-                parse_events(response.events, response.recommendations);
-                $('#custom_location').attr("placeholder", response.meta.geolocation.display_name);
-            }else if(performers != null){
-                console.log(this);
-                console.log('no exact matches, nothing to add');
-            }else{
-                this.tryCount++;
-                if(this.tryCount <= 10){
-                    if(response.recommendations != null){
-                        base_url = base_url.replace('recommendations', 'events');
-                        delete params['performers.id'];
-                        $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
-                            $(this).text('Expanding your tastes...');
-                        }).fadeTo(500, 1);
-                        this.tryCount--;
-                    }else{
-                        if(response.meta.geolocation.display_name == null){
-                            $('#loader > .preloader-wrapper').hide();
-                            $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
-                                $('#loading-message').html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
-                                    +   "I don't recognize '" + window.settings.custom_location +"'<br>"
-                                    +   "Please try typing a different location."
-                                );
-                                setTimeout(function(){
-                                    $('.button-collapse').sideNav('show');
-                                    $('#loader').hide();
-                                    $('#custom_location').select();
-                                }, 4000);
-                            }).fadeTo(500, 1);
-                            return;
-                        }
-                        if(this.tryCount <= 1){
-                            $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
-                                $(this).text('Increasing search radius...');
-                            }).fadeTo(500, 1);
-                        }
-                        params.range = parseFloat(params.range.slice(0,-2)) + 2 + 'mi';
-                        //params['datetime_local.lte'] = moment(params['datetime_local.lte']).add(1, 'days').format('YYYY-MM-DD'),
-                    }
-                    this.url = base_url + $.param(params, true);
-                    console.log(this);
-                    console.log(response);
-                    $.ajax(this);
-                }else{
-                    $('#loader > .preloader-wrapper').hide();
-                    $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
-                        $(this).html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
-                            +   "No concerts found in: " + response.meta.geolocation.display_name +"<br>"
-                            +   "Is this not where you are? Try enabling improved location accuracy in <i class='mdi-navigation-menu'></i>Settings."
-                        );
-                    }).fadeTo(200, 1);
-                }
-            }
-        },
-        error: function (response, status, error) {
-            this.tryCount++;
-            if(this.tryCount <= this.retryLimit){
-                $('#loading-message').stop().fadeTo(500, 0.1, function() {
-                    $(this).text('Retrying...');
-                }).fadeTo(500, 1);
-                $.ajax(this);
-            }else if(this.passthrough == null){
-                this.passthrough = true;
-                this.url = passthrough(this.url);
-                console.log(this);
-                $.ajax(this);
-            }else{
-                console.log(response);
-                console.log(status);
-                console.log(error);
-                $('#loader > .preloader-wrapper').hide();
-                $('#loading-message').html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
-                    +   "We dun goofed!<br>Sorry, my servers are down right now. Please try again later."
-                );
-            }
-        },
-    });
-}
-
-function passthrough(url){
-    var base_url = 'passthrough?';
-    var params = {
-        'url': url,
-    }
-    return base_url +  $.param(params, true);
-}
-
 function shuffle(o){
     for(var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
     return o;
@@ -448,7 +277,7 @@ function fetch_tracks(artist, event_id, limit = 5){
     });
 }
 
-function parse_events(events, recommendations){
+window.parse_events = function(events, recommendations){
     var max_events = 50;
     events = shuffle(events);
     events = apply_event_preferences(events);
@@ -484,13 +313,13 @@ function parse_events(events, recommendations){
     if(recommendations != null){
         if(events.length < 5){
             console.log('not enough recommendations, adding all events');
-            get_events(true);
+            seatgeek.get_events(true);
         }else {
             var liked_artists = JSON.parse(localStorage.getItem('liked_artists')) || {};
             if(liked_artists != null){
                 console.log(liked_artists);
                 console.log('grab liked artist events, in case recommendations missed them');
-                get_events(true, liked_artists);
+                seatgeek.get_events(true, liked_artists);
             }
         }
     }
@@ -667,16 +496,16 @@ function refresh_playlist() {
             window.coordinates = position.coords;
             //console.log(window.coordinates);
             window.tracks = {};
-            get_events();
+            seatgeek.get_events();
         };
         var error = function(position) {
             window.tracks = {};
-            get_events();
+            seatgeek.get_events();
         };
         navigator.geolocation.getCurrentPosition(success, error, {maximumAge:60*60*1000, timeout:8000, enableHighAccuracy: false});
     }else{
         window.tracks = {};
-        get_events();
+        seatgeek.get_events();
     }
 }
 
