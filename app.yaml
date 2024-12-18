@@ -30,3 +30,5 @@ handlers:
   upload: static/manifest.json
 - url: /.*
   script: main.app
+  secure: always
+  redirect_http_response_code: 301
