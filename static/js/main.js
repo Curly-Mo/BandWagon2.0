@@ -758,7 +758,7 @@ function set_event_info(event_id, artist_id){
         return;
     }
     window.eventinfo = event_id;
-    var event = events[event_id];
+    var event = window.events[event_id];
     // Title
     $('#event-title').clearQueue().stop().fadeTo('medium', 0.1, function() {
         $(this).text(event.title);
@@ -869,7 +869,7 @@ function lastfm_artist_info(artist_id, el){
     var params = {
         'api_key': apiKey,
         'method': 'artist.getinfo',
-        'artist': artists[artist_id].name,
+        'artist': window.artists[artist_id].name,
         'format': 'json',
     }
     var url = lastfm_url  + $.param(params, true);
@@ -960,7 +960,7 @@ function lastfm_artist_info(artist_id, el){
 
 // TODO: figure out all the missing fields that last.fm currently has better
 // function musicbrainz_artist_info(artist_id, el){
-//   musicbrainz_search_artist(artists[artist_id]).then((mb_search_artist) =>
+//   musicbrainz_search_artist(window.artists[artist_id]).then((mb_search_artist) =>
 //     musicbrainz_fetch_artist_info(mb_search_artist.id)
 //   ).then((mb_artist_info) =>{
 //     var artist_profile = mb_artist_info;
@@ -1115,7 +1115,7 @@ function echonest_artist_info(artist_id){
     var echonest_url = 'http://developer.echonest.com/api/v4/artist/profile?';
     var params = {
         'api_key': apiKey,
-        'name': artists[artist_id].name,
+        'name': window.artists[artist_id].name,
         'bucket': [
             'biographies',
             'familiarity',
@@ -1298,21 +1298,21 @@ function play_artists(artist_ids, event_id, venue_id){
     }
     clear_playlist();
     window.tracks = {};
-    var tracks_per = Math.max(Math.floor(15-10*Math.log10(artist_ids.length)), 5);
+    var tracks_per = Math.max(Math.floor(30-10*Math.log10(artist_ids.length)), 5);
     for(var i = 0; i < artist_ids.length; i++) {
         (function (i) {
-            var performer = artists[artist_ids[i]];
+            var performer = window.artists[artist_ids[i]];
             promises.push(
                 fetch_tracks(performer, performer.event_id, tracks_per)
             );
         })(i);
     }
-    $.when.apply($, promises).then(function() {
+    Promise.all(promises).then(function() {
         // returned data is in arguments[0][0], arguments[1][0], ... arguments[9][0]
         $('#loader').slideUp();
         load_tracks(create_track_list());
         promises.length = 0;
-    }, function(e) {
+    }).catch(function(e) {
         // error occurred
         console.log(e);
         $('#loader').slideUp();
@@ -1328,8 +1328,8 @@ function init_track_actions(){
         var track = tracks[track_id];
         var liked_artists = JSON.parse(localStorage.getItem('liked_artists')) || {};
 //        var liked_genres = JSON.parse(localStorage.getItem('liked_genres')) || {};
-        var name = artists[track.artist_id].name;
-        var artist_id = artists[track.artist_id].id;
+        var name = window.artists[track.artist_id].name;
+        var artist_id = window.artists[track.artist_id].id;
         if(!(artist_id in liked_artists)){
             liked_artists[artist_id] = {'id': artist_id, 'name': name};
             localStorage.setItem('liked_artists', JSON.stringify(liked_artists));
@@ -1357,8 +1357,8 @@ function init_track_actions(){
         var track = tracks[track_id];
         var disliked_artists = JSON.parse(localStorage.getItem('disliked_artists')) || {};
 //        var disliked_genres = JSON.parse(localStorage.getItem('disliked_genres')) || {};
-        var name = artists[track.artist_id].name;
-        var artist_id = artists[track.artist_id].id;
+        var name = window.artists[track.artist_id].name;
+        var artist_id = window.artists[track.artist_id].id;
         if(!(name.toLowerCase() in disliked_artists)){
             disliked_artists[artist_id] = {'id': artist_id, 'name': name};
             localStorage.setItem('disliked_artists', JSON.stringify(disliked_artists));
@@ -1865,7 +1865,7 @@ function set_artist_info(artist_id){
         return;
     }
     window.artistinfo = artist_id;
-    var artist = artists[artist_id];
+    var artist = window.artists[artist_id];
     // Title
     $('#artist-title').clearQueue().stop().fadeTo('medium', 0.1, function() {
         $(this).text(artist.name);
@@ -1892,7 +1892,7 @@ function set_venue_info(venue_id){
         return;
     }
     window.venueinfo = venue_id;
-    var venue = venues[venue_id];
+    var venue = window.venues[venue_id];
     // Title
     $('#venue-title').clearQueue().stop().fadeTo('medium', 0.1, function() {
         $(this).text(venue.name);
