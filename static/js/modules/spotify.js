@@ -127,13 +127,13 @@ class Spotify {
     });
   }
 
-  update_liked_artists(limit = 60){
+  update_liked_artists(limit = 50){
     return this.fetch_user_likes(limit)
     .then((response) => {
       let liked_artists = this.store.get("liked_artists");
       for(var i=0; i<liked_artists.length; i++){
         var artist = liked_artists[i];
-        if ("name" in artist) {
+        if (artist && "name" in artist) {
           window.add_pref('liked_artists', artist.name);
         }
       }
