@@ -150,6 +150,7 @@ function play_toggle(){
         pause();
     }
 }
+window.play_toggle = play_toggle;
 
 function next(){
     var curr = $('.playlist-item.active');
