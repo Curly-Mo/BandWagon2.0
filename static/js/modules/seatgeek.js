@@ -115,7 +115,7 @@ class SeatGeek {
         //$('#loader').closeModal({out_duration: 0});
         window.parse_events(response_agg.events, response_agg.recommendations);
         $('#custom_location').attr("placeholder", response_agg.meta.geolocation.display_name);
-      }else if(artist_ids.length == 0){
+      }else if(artist_ids.length != 0){
         console.log(this);
         console.log('no exact matches, nothing to add');
       }else{
@@ -178,6 +178,7 @@ class SeatGeek {
       //   this.fetch_events_with_retries(passthrough, {'url': base_url + $.param(params, true)}, artist_ids, tryCount);
       }else{
         console.log(error);
+        console.log(promises);
         $('#loader > .preloader-wrapper').hide();
         $('#loading-message').html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
             +   "We dun goofed!<br>Sorry, my servers are down right now. Please try again later."
