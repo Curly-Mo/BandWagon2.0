@@ -13,10 +13,10 @@ class SoundCloud {
 
   cleanup() {
     // in case cache is getting too big
-    if (Object.keys(this.store.get("artists")).length > 1000) {
+    if (Object.keys(this.store.get("artists")).length > 500) {
       this.store.set("artists", {});
     }
-    if (Object.keys(this.store.get("tracks")).length > 5000) {
+    if (Object.keys(this.store.get("tracks")).length > 2000) {
       this.store.set("tracks", {});
     }
   }
