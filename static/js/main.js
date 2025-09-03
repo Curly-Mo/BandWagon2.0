@@ -61,9 +61,9 @@ function init(){
     });
     $('#artist-heart').on('change', function(e){
         if(this.checked){
-            add_pref('liked_artists', this.getAttribute('data-id'));
+            window.add_pref('liked_artists', this.getAttribute('data-id'));
         }else{
-            remove_pref('liked_artists', this.getAttribute('data-id'));
+            window.remove_pref('liked_artists', this.getAttribute('data-id'));
         }
     });
 }
@@ -670,12 +670,12 @@ function init_settings(){
         load_preferences();
         // facebook_init();
     });
-    //$('#add_liked_artist, #add_liked_genre, #add_disliked_artist, #add_disliked_genre').on('keydown', add_pref);
+    //$('#add_liked_artist, #add_liked_genre, #add_disliked_artist, #add_disliked_genre').on('keydown', window.add_pref);
     $('#add_liked_artist, #add_disliked_artist').on('keydown', function(){
         if (event.keyCode == 13) {
             var pref_type = this.parentNode.previousElementSibling.id;
             var preferences = JSON.parse(localStorage.getItem(pref_type)) || {};
-            add_pref(pref_type, this.value);
+            window.add_pref(pref_type, this.value);
             this.value = '';
         }
     });
@@ -1332,13 +1332,13 @@ function init_track_actions(){
         if(!(artist_id in liked_artists)){
             liked_artists[artist_id] = {'id': artist_id, 'name': name};
             localStorage.setItem('liked_artists', JSON.stringify(liked_artists));
-            var action = "delete_pref('liked_artists', '" + artist_id +"');" + 'this.parentNode.remove()';
+            var action = "window.remove_pref('liked_artists', '" + artist_id +"');" + 'this.parentNode.remove()';
             Materialize.toast('Liked artist: ' + name + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
         }
 //        if(track.genre && !(track.genre in liked_genres)){
 //            liked_genres[track.genre.toLowerCase()] = track.genre;
 //            localStorage.setItem('liked_genres', JSON.stringify(liked_genres));
-//            var action = "delete_pref('liked_genres', '" + track.genre.toLowerCase()+"');" + 'this.parentNode.remove()';
+//            var action = "window.remove_pref('liked_genres', '" + track.genre.toLowerCase()+"');" + 'this.parentNode.remove()';
 //            Materialize.toast('Liked genre: ' + track.genre + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
 //        }
         $(this).parent().slideUp(400);
@@ -1361,13 +1361,13 @@ function init_track_actions(){
         if(!(name.toLowerCase() in disliked_artists)){
             disliked_artists[artist_id] = {'id': artist_id, 'name': name};
             localStorage.setItem('disliked_artists', JSON.stringify(disliked_artists));
-            var action = "delete_pref('disliked_artists', '" + artist_id +"');" + 'this.parentNode.remove()';
+            var action = "window.remove_pref('disliked_artists', '" + artist_id +"');" + 'this.parentNode.remove()';
             Materialize.toast('Disliked artist: ' + name + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
         }
 //        if(track.genre && !(track.genre.toLowerCase in disliked_genres)){
 //            disliked_genres[track.genre.toLowerCase()] = track.genre;
 //            localStorage.setItem('disliked_genres', JSON.stringify(disliked_genres));
-//            var action = "delete_pref('disliked_genres', '" + track.genre.toLowerCase()+"');" + 'this.parentNode.remove()';
+//            var action = "window.remove_pref('disliked_genres', '" + track.genre.toLowerCase()+"');" + 'this.parentNode.remove()';
 //            Materialize.toast('Disliked genre: ' + track.genre + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
 //        }
         $(this).parent().slideUp(400);
@@ -1458,11 +1458,11 @@ function load_preferences(){
                 'text': 'close',
             });
             close.on('click', function(){
-                remove_pref($(this).parent().parent().attr('id'), this.parentNode.getAttribute('data-id'));
+                window.remove_pref($(this).parent().parent().attr('id'), this.parentNode.getAttribute('data-id'));
             });
 
             close.on('click', function(){
-                remove_pref($(this).parent().parent().attr('id'), this.parentNode.getAttribute('data-id'));
+                window.remove_pref($(this).parent().parent().attr('id'), this.parentNode.getAttribute('data-id'));
             });
             var text = $('<a>', {
                 'text': pref[keys[k]].name,
@@ -1487,10 +1487,11 @@ function load_preferences(){
     }
 }
 
-function remove_pref(pref_type, value){
+window.remove_pref = function(pref_type, value){
     var preferences = JSON.parse(localStorage.getItem(pref_type)) || {};
     delete preferences[value]
     localStorage.setItem(pref_type, JSON.stringify(preferences));
+    // console.log(this);
 }
 
 window.add_pref = function(pref_type, value){
@@ -1545,13 +1546,6 @@ window.add_pref = function(pref_type, value){
     }catch(e){
         console.log(e);
     }
-}
-
-function delete_pref(pref_type, pref){
-    var preferences = JSON.parse(localStorage.getItem(pref_type)) || {};
-    delete preferences[pref]
-    localStorage.setItem(pref_type, JSON.stringify(preferences));
-    console.log(this);
 }
 
 function apply_event_preferences(events){
@@ -2073,7 +2067,7 @@ window.spotify_import = function() {
 //                 console.log(response);
 //                 for(var i=0; i<response.data.length; i++){
 //                     var artist = response.data[i];
-//                     add_pref('liked_artists', artist.name);
+//                     window.add_pref('liked_artists', artist.name);
 //                 }
 //             }else{
 //                 console.log(response);
