@@ -77,7 +77,7 @@ class SeatGeek {
     let promises = [];
     if (artist_ids.length == 0) {
       let url = base_url + $.param(params, true);
-      //console.log(url);
+      // console.log(url);
       promises.push(
         fetch(url, {
           method: "GET",
@@ -93,6 +93,7 @@ class SeatGeek {
       remaining_artist_ids = remaining_artist_ids.slice(20)
       params['performers.id'] = artist_ids_batch;
       let url = base_url + $.param(params, true);
+      // console.log(url);
       promises.push(
         fetch(url, {
           method: "GET",

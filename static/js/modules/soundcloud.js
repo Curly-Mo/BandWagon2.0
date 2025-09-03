@@ -4,9 +4,21 @@ class SoundCloud {
       defaults: {
         auth: {},
         artists: {},
+        tracks: {},
       },
     });
+    this.cleanup();
     this.init().then(callback);
+  }
+
+  cleanup() {
+    // in case cache is getting too big
+    if (Object.keys(this.store.get("artists")).length > 1000) {
+      this.store.set("artists", {});
+    }
+    if (Object.keys(this.store.get("tracks")).length > 5000) {
+      this.store.set("tracks", {});
+    }
   }
 
   get auth() {

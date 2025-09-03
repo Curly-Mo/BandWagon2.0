@@ -83,7 +83,7 @@ class Spotify {
   //   });
   // }
 
-  fetch_user_likes(limit = 100) {
+  fetch_user_likes(limit = 50) {
     let auth = this.store.get("auth");
     let base_url = 'https://api.spotify.com/v1/me/top/artists';
     let params = {
@@ -126,8 +126,8 @@ class Spotify {
     });
   }
 
-  update_liked_artists(){
-    return this.fetch_user_likes()
+  update_liked_artists(limit = 60){
+    return this.fetch_user_likes(limit)
     .then((response) => {
       let liked_artists = this.store.get("liked_artists");
       for(var i=0; i<liked_artists.length; i++){

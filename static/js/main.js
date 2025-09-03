@@ -1522,13 +1522,14 @@ window.add_pref = function(pref_type, value){
         cache: true,
         pref_type: pref_type,
         success : function(data) {
-            var exact_match = data.performers.find(function(el){
+            var performers = data.performers.filter((performer) => performer.type == "band");
+            var exact_match = performers.find(function(el){
                 return el.name.toLowerCase() == term.toLowerCase();
             });
             if(exact_match){
-                data.performers = [exact_match];
+                performers = [exact_match];
             }
-            var artist = data.performers[0]
+            var artist = performers[0]
             var preferences = JSON.parse(localStorage.getItem(this.pref_type)) || {};
             // preferences[artist.id] = {'id': artist.id, 'name': artist.name};
             if(artist) {
