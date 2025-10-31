@@ -1,6 +1,6 @@
 runtime: python312
 
-default_expiration: "180d 0h"
+default_expiration: "7d 0h"
 
 handlers:
 - url: /images/favicon.ico
