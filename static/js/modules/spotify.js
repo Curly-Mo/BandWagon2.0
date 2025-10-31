@@ -83,7 +83,7 @@ class Spotify {
   //   });
   // }
 
-  fetch_user_likes(limit = 200) {
+  fetch_user_likes(limit = 50) {
     let auth = this.store.get("auth");
     let base_url = 'https://api.spotify.com/v1/me/top/artists';
     let params = {
@@ -118,6 +118,7 @@ class Spotify {
       let top_artists_responses = responses;
       let liked_artists = [];
       for(let response of responses) {
+        let items = response.items
         liked_artists = liked_artists.concat(response.items);
       }
       this.store.set("top_artists_responses", top_artists_responses);
@@ -126,13 +127,15 @@ class Spotify {
     });
   }
 
-  update_liked_artists(){
-    return this.fetch_user_likes()
+  update_liked_artists(limit = 60){
+    return this.fetch_user_likes(limit)
     .then((response) => {
       let liked_artists = this.store.get("liked_artists");
       for(var i=0; i<liked_artists.length; i++){
         var artist = liked_artists[i];
-        window.add_pref('liked_artists', artist.name);
+        if ("name" in artist) {
+          window.add_pref('liked_artists', artist.name);
+        }
       }
     })
     .catch((err) => {
