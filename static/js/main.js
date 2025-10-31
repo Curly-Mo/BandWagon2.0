@@ -1514,7 +1514,7 @@ window.add_pref = function(pref_type, value){
         'aid': 11799,
         'q': term,
         'taxonomies.name': ['concert', 'music_festival'],
-        'per_page': 20,
+        'per_page': 100,
         'format': 'json',
     }
     var url = base_url + $.param(params, true);
@@ -1525,12 +1525,11 @@ window.add_pref = function(pref_type, value){
         pref_type: pref_type,
         success : function(data) {
             var performers = data.performers.filter((performer) => performer.type == "band");
-            var exact_match = performers.find(function(el){
+            var exact_matches = performers.filter(function(el){
                 return el.name.toLowerCase() == term.toLowerCase();
             });
-            if(exact_match){
-                performers = [exact_match];
-            }
+            // only save if we have an exact match
+            performers = exact_matches;
             var artist = performers[0]
             var preferences = JSON.parse(localStorage.getItem(this.pref_type)) || {};
             // preferences[artist.id] = {'id': artist.id, 'name': artist.name};
@@ -1754,7 +1753,7 @@ function search_artists(term){
         'aid': 11799,
         'q': term,
         'taxonomies.name': ['concert', 'music_festival'],
-        'per_page': 20,
+        'per_page': 100,
         'format': 'json',
     }
     var url = base_url + $.param(params, true);
@@ -1771,14 +1770,16 @@ function search_artists(term){
                 $('#search-spinner').hide();
                 $('#search-message').text('Search results');
             }
-            var exact_match = data.performers.find(function(el){
+            var performers = data.performers.filter((performer) => performer.type == "band");
+            var exact_matches = performers.filter(function(el){
                 return el.name.toLowerCase() == term.toLowerCase();
             });
-            if(exact_match){
-                data.performers = [exact_match];
-            }
-            for(var i=0; i<data.performers.length && i < 5; i++){
-                var performer = data.performers[i];
+            var rest = performers.filter(function(el){
+                return el.name.toLowerCase() != term.toLowerCase();
+            });
+            performers = [...exact_matches, ...rest];
+            for(var i=0; i<performers.length && i < 5; i++){
+                var performer = performers[i];
                 window.artists[performer.id] = performer;
                 var item = $('<a>').attr({'class': 'collection-item', href: 'javascript:void(0)', 'data-id': performer.id})
                         .append($('<span>').text('Artist: ').css('color', 'white'))
@@ -1802,7 +1803,7 @@ function search_venues(term){
         'q': term,
         'range': window.settings.distance || "100mi",
         'format': 'json',
-        'per_page': 20,
+        'per_page': 100,
     }
     if(window.coordinates){
         params['lat'] = window.coordinates.latitude;
@@ -1840,9 +1841,10 @@ function search_venues(term){
             var exact_matches = data.venues.filter(function(el){
                 return el.name.toLowerCase() == term.toLowerCase();
             });
-            if(exact_matches.length == 1){
-                data.venues = exact_matches;
-            }
+            var rest = data.venues.filter(function(el){
+                return el.name.toLowerCase() != term.toLowerCase();
+            });
+            data.venues = [...exact_matches, ...rest];
             for(var i=0; i<data.venues.length && i < 5; i++){
                 var venue = data.venues[i];
                 window.venues[venue.id] = venue;
