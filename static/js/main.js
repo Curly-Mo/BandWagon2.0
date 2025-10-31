@@ -61,9 +61,9 @@ function init(){
     });
     $('#artist-heart').on('change', function(e){
         if(this.checked){
-            add_pref('liked_artists', this.getAttribute('data-id'));
+            window.add_pref('liked_artists', this.getAttribute('data-id'));
         }else{
-            remove_pref('liked_artists', this.getAttribute('data-id'));
+            window.remove_pref('liked_artists', this.getAttribute('data-id'));
         }
     });
 }
@@ -150,6 +150,7 @@ function play_toggle(){
         pause();
     }
 }
+window.play_toggle = play_toggle;
 
 function next(){
     var curr = $('.playlist-item.active');
@@ -670,12 +671,12 @@ function init_settings(){
         load_preferences();
         // facebook_init();
     });
-    //$('#add_liked_artist, #add_liked_genre, #add_disliked_artist, #add_disliked_genre').on('keydown', add_pref);
+    //$('#add_liked_artist, #add_liked_genre, #add_disliked_artist, #add_disliked_genre').on('keydown', window.add_pref);
     $('#add_liked_artist, #add_disliked_artist').on('keydown', function(){
         if (event.keyCode == 13) {
             var pref_type = this.parentNode.previousElementSibling.id;
             var preferences = JSON.parse(localStorage.getItem(pref_type)) || {};
-            add_pref(pref_type, this.value);
+            window.add_pref(pref_type, this.value);
             this.value = '';
         }
     });
@@ -757,7 +758,7 @@ function set_event_info(event_id, artist_id){
         return;
     }
     window.eventinfo = event_id;
-    var event = events[event_id];
+    var event = window.events[event_id];
     // Title
     $('#event-title').clearQueue().stop().fadeTo('medium', 0.1, function() {
         $(this).text(event.title);
@@ -868,7 +869,7 @@ function lastfm_artist_info(artist_id, el){
     var params = {
         'api_key': apiKey,
         'method': 'artist.getinfo',
-        'artist': artists[artist_id].name,
+        'artist': window.artists[artist_id].name,
         'format': 'json',
     }
     var url = lastfm_url  + $.param(params, true);
@@ -959,7 +960,7 @@ function lastfm_artist_info(artist_id, el){
 
 // TODO: figure out all the missing fields that last.fm currently has better
 // function musicbrainz_artist_info(artist_id, el){
-//   musicbrainz_search_artist(artists[artist_id]).then((mb_search_artist) =>
+//   musicbrainz_search_artist(window.artists[artist_id]).then((mb_search_artist) =>
 //     musicbrainz_fetch_artist_info(mb_search_artist.id)
 //   ).then((mb_artist_info) =>{
 //     var artist_profile = mb_artist_info;
@@ -1114,7 +1115,7 @@ function echonest_artist_info(artist_id){
     var echonest_url = 'http://developer.echonest.com/api/v4/artist/profile?';
     var params = {
         'api_key': apiKey,
-        'name': artists[artist_id].name,
+        'name': window.artists[artist_id].name,
         'bucket': [
             'biographies',
             'familiarity',
@@ -1297,21 +1298,21 @@ function play_artists(artist_ids, event_id, venue_id){
     }
     clear_playlist();
     window.tracks = {};
-    var tracks_per = Math.max(Math.floor(15-10*Math.log10(artist_ids.length)), 5);
+    var tracks_per = Math.max(Math.floor(30-10*Math.log10(artist_ids.length)), 5);
     for(var i = 0; i < artist_ids.length; i++) {
         (function (i) {
-            var performer = artists[artist_ids[i]];
+            var performer = window.artists[artist_ids[i]];
             promises.push(
                 fetch_tracks(performer, performer.event_id, tracks_per)
             );
         })(i);
     }
-    $.when.apply($, promises).then(function() {
+    Promise.all(promises).then(function() {
         // returned data is in arguments[0][0], arguments[1][0], ... arguments[9][0]
         $('#loader').slideUp();
         load_tracks(create_track_list());
         promises.length = 0;
-    }, function(e) {
+    }).catch(function(e) {
         // error occurred
         console.log(e);
         $('#loader').slideUp();
@@ -1327,18 +1328,18 @@ function init_track_actions(){
         var track = tracks[track_id];
         var liked_artists = JSON.parse(localStorage.getItem('liked_artists')) || {};
 //        var liked_genres = JSON.parse(localStorage.getItem('liked_genres')) || {};
-        var name = artists[track.artist_id].name;
-        var artist_id = artists[track.artist_id].id;
+        var name = window.artists[track.artist_id].name;
+        var artist_id = window.artists[track.artist_id].id;
         if(!(artist_id in liked_artists)){
             liked_artists[artist_id] = {'id': artist_id, 'name': name};
             localStorage.setItem('liked_artists', JSON.stringify(liked_artists));
-            var action = "delete_pref('liked_artists', '" + artist_id +"');" + 'this.parentNode.remove()';
+            var action = "window.remove_pref('liked_artists', '" + artist_id +"');" + 'this.parentNode.remove()';
             Materialize.toast('Liked artist: ' + name + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
         }
 //        if(track.genre && !(track.genre in liked_genres)){
 //            liked_genres[track.genre.toLowerCase()] = track.genre;
 //            localStorage.setItem('liked_genres', JSON.stringify(liked_genres));
-//            var action = "delete_pref('liked_genres', '" + track.genre.toLowerCase()+"');" + 'this.parentNode.remove()';
+//            var action = "window.remove_pref('liked_genres', '" + track.genre.toLowerCase()+"');" + 'this.parentNode.remove()';
 //            Materialize.toast('Liked genre: ' + track.genre + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
 //        }
         $(this).parent().slideUp(400);
@@ -1356,18 +1357,18 @@ function init_track_actions(){
         var track = tracks[track_id];
         var disliked_artists = JSON.parse(localStorage.getItem('disliked_artists')) || {};
 //        var disliked_genres = JSON.parse(localStorage.getItem('disliked_genres')) || {};
-        var name = artists[track.artist_id].name;
-        var artist_id = artists[track.artist_id].id;
+        var name = window.artists[track.artist_id].name;
+        var artist_id = window.artists[track.artist_id].id;
         if(!(name.toLowerCase() in disliked_artists)){
             disliked_artists[artist_id] = {'id': artist_id, 'name': name};
             localStorage.setItem('disliked_artists', JSON.stringify(disliked_artists));
-            var action = "delete_pref('disliked_artists', '" + artist_id +"');" + 'this.parentNode.remove()';
+            var action = "window.remove_pref('disliked_artists', '" + artist_id +"');" + 'this.parentNode.remove()';
             Materialize.toast('Disliked artist: ' + name + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
         }
 //        if(track.genre && !(track.genre.toLowerCase in disliked_genres)){
 //            disliked_genres[track.genre.toLowerCase()] = track.genre;
 //            localStorage.setItem('disliked_genres', JSON.stringify(disliked_genres));
-//            var action = "delete_pref('disliked_genres', '" + track.genre.toLowerCase()+"');" + 'this.parentNode.remove()';
+//            var action = "window.remove_pref('disliked_genres', '" + track.genre.toLowerCase()+"');" + 'this.parentNode.remove()';
 //            Materialize.toast('Disliked genre: ' + track.genre + ' <a class="btn waves-effect waves-light" onclick="'+action+'">undo</a>', 4000, 'action-toast');
 //        }
         $(this).parent().slideUp(400);
@@ -1458,11 +1459,11 @@ function load_preferences(){
                 'text': 'close',
             });
             close.on('click', function(){
-                remove_pref($(this).parent().parent().attr('id'), this.parentNode.getAttribute('data-id'));
+                window.remove_pref($(this).parent().parent().attr('id'), this.parentNode.getAttribute('data-id'));
             });
 
             close.on('click', function(){
-                remove_pref($(this).parent().parent().attr('id'), this.parentNode.getAttribute('data-id'));
+                window.remove_pref($(this).parent().parent().attr('id'), this.parentNode.getAttribute('data-id'));
             });
             var text = $('<a>', {
                 'text': pref[keys[k]].name,
@@ -1487,10 +1488,11 @@ function load_preferences(){
     }
 }
 
-function remove_pref(pref_type, value){
+window.remove_pref = function(pref_type, value){
     var preferences = JSON.parse(localStorage.getItem(pref_type)) || {};
     delete preferences[value]
     localStorage.setItem(pref_type, JSON.stringify(preferences));
+    // console.log(this);
 }
 
 window.add_pref = function(pref_type, value){
@@ -1512,7 +1514,7 @@ window.add_pref = function(pref_type, value){
         'aid': 11799,
         'q': term,
         'taxonomies.name': ['concert', 'music_festival'],
-        'per_page': 20,
+        'per_page': 100,
         'format': 'json',
     }
     var url = base_url + $.param(params, true);
@@ -1523,12 +1525,11 @@ window.add_pref = function(pref_type, value){
         pref_type: pref_type,
         success : function(data) {
             var performers = data.performers.filter((performer) => performer.type == "band");
-            var exact_match = performers.find(function(el){
+            var exact_matches = performers.filter(function(el){
                 return el.name.toLowerCase() == term.toLowerCase();
             });
-            if(exact_match){
-                performers = [exact_match];
-            }
+            // only save if we have an exact match
+            performers = exact_matches;
             var artist = performers[0]
             var preferences = JSON.parse(localStorage.getItem(this.pref_type)) || {};
             // preferences[artist.id] = {'id': artist.id, 'name': artist.name};
@@ -1545,13 +1546,6 @@ window.add_pref = function(pref_type, value){
     }catch(e){
         console.log(e);
     }
-}
-
-function delete_pref(pref_type, pref){
-    var preferences = JSON.parse(localStorage.getItem(pref_type)) || {};
-    delete preferences[pref]
-    localStorage.setItem(pref_type, JSON.stringify(preferences));
-    console.log(this);
 }
 
 function apply_event_preferences(events){
@@ -1759,7 +1753,7 @@ function search_artists(term){
         'aid': 11799,
         'q': term,
         'taxonomies.name': ['concert', 'music_festival'],
-        'per_page': 20,
+        'per_page': 100,
         'format': 'json',
     }
     var url = base_url + $.param(params, true);
@@ -1776,14 +1770,16 @@ function search_artists(term){
                 $('#search-spinner').hide();
                 $('#search-message').text('Search results');
             }
-            var exact_match = data.performers.find(function(el){
+            var performers = data.performers.filter((performer) => performer.type == "band");
+            var exact_matches = performers.filter(function(el){
                 return el.name.toLowerCase() == term.toLowerCase();
             });
-            if(exact_match){
-                data.performers = [exact_match];
-            }
-            for(var i=0; i<data.performers.length && i < 5; i++){
-                var performer = data.performers[i];
+            var rest = performers.filter(function(el){
+                return el.name.toLowerCase() != term.toLowerCase();
+            });
+            performers = [...exact_matches, ...rest];
+            for(var i=0; i<performers.length && i < 5; i++){
+                var performer = performers[i];
                 window.artists[performer.id] = performer;
                 var item = $('<a>').attr({'class': 'collection-item', href: 'javascript:void(0)', 'data-id': performer.id})
                         .append($('<span>').text('Artist: ').css('color', 'white'))
@@ -1807,7 +1803,7 @@ function search_venues(term){
         'q': term,
         'range': window.settings.distance || "100mi",
         'format': 'json',
-        'per_page': 20,
+        'per_page': 100,
     }
     if(window.coordinates){
         params['lat'] = window.coordinates.latitude;
@@ -1845,9 +1841,10 @@ function search_venues(term){
             var exact_matches = data.venues.filter(function(el){
                 return el.name.toLowerCase() == term.toLowerCase();
             });
-            if(exact_matches.length == 1){
-                data.venues = exact_matches;
-            }
+            var rest = data.venues.filter(function(el){
+                return el.name.toLowerCase() != term.toLowerCase();
+            });
+            data.venues = [...exact_matches, ...rest];
             for(var i=0; i<data.venues.length && i < 5; i++){
                 var venue = data.venues[i];
                 window.venues[venue.id] = venue;
@@ -1870,7 +1867,7 @@ function set_artist_info(artist_id){
         return;
     }
     window.artistinfo = artist_id;
-    var artist = artists[artist_id];
+    var artist = window.artists[artist_id];
     // Title
     $('#artist-title').clearQueue().stop().fadeTo('medium', 0.1, function() {
         $(this).text(artist.name);
@@ -1897,7 +1894,7 @@ function set_venue_info(venue_id){
         return;
     }
     window.venueinfo = venue_id;
-    var venue = venues[venue_id];
+    var venue = window.venues[venue_id];
     // Title
     $('#venue-title').clearQueue().stop().fadeTo('medium', 0.1, function() {
         $(this).text(venue.name);
@@ -2073,7 +2070,7 @@ window.spotify_import = function() {
 //                 console.log(response);
 //                 for(var i=0; i<response.data.length; i++){
 //                     var artist = response.data[i];
-//                     add_pref('liked_artists', artist.name);
+//                     window.add_pref('liked_artists', artist.name);
 //                 }
 //             }else{
 //                 console.log(response);

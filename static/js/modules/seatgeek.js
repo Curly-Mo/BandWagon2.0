@@ -106,11 +106,12 @@ class SeatGeek {
       for(var i=1; i<responses.length; i++){
         let response = responses[i];
         response_agg.recommendations = (response_agg.recommendations || []).concat(response.recommendations || []);
-        response_agg.events = ( response_agg.events || []).concat(response.events|| []);
+        response_agg.events = (response_agg.events || []).concat(response.events|| []);
       }
       if(response_agg.recommendations != null){
         response_agg.events = jQuery.map(response_agg.recommendations, function(r){return r.event;});
       }
+      response_agg.events = this.filter_events(response_agg.events)
       if(response_agg.events.length > 0) {
         //$('#loader').closeModal({out_duration: 0});
         window.parse_events(response_agg.events, response_agg.recommendations);
@@ -152,13 +153,13 @@ class SeatGeek {
             //params['datetime_local.lte'] = moment(params['datetime_local.lte']).add(1, 'days').format('YYYY-MM-DD'),
           }
           console.log(this);
-          console.log(response);
+          console.log(response_agg);
           this.fetch_events_with_retries(base_url, params, artist_ids, tryCount);
         }else{
           $('#loader > .preloader-wrapper').hide();
           $('#loading-message').clearQueue().stop().fadeTo(500, 0.1, function() {
             $(this).html("<img style='width:300px;' src='/images/dino.gif'></img><br>"
-                +   "No concerts found in: " + response.meta.geolocation.display_name +"<br>"
+                +   "No concerts found in: " + response_agg.meta.geolocation.display_name +"<br>"
                 +   "Is this not where you are? Try enabling improved location accuracy in <i class='mdi-navigation-menu'></i>Settings."
             );
           }).fadeTo(200, 1);
@@ -185,6 +186,10 @@ class SeatGeek {
         );
       }
     });
+  }
+
+  filter_events(events){
+    return events.filter((event) => ["concert", "music_festival"].includes(event.type));
   }
 }
 

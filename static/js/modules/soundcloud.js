@@ -78,7 +78,7 @@ class SoundCloud {
 
   fetch_artist_tracks(artist, event_id, limit = 3) {
     let cached = this.artists[artist.id];
-    if (cached) {
+    if (cached && Object.keys(cached.tracks).length >= limit) {
       return Promise.resolve(cached);
     }
     return fetch(this.artist_tracks_url(artist.name, limit), {
@@ -110,7 +110,7 @@ class SoundCloud {
 
   parse_tracks(tracks, event_id, artist_id) {
     let artists = this.artists;
-    let artist = artists[artist_id] || {};
+    let artist = artists[artist_id] || {'event_id': event_id};
     let artist_tracks = artist.tracks || {};
     for(let i = 0; i < tracks.length; i++) {
       let track = tracks[i];
